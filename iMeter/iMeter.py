@@ -7,7 +7,7 @@ from BeautifulSoup import BeautifulSoup
 waitingFor = []
 
 def parseWebpage():
-	url = 'http://imeter.diogogomes.com/listdev.htm'
+	url = 'http://192.168.1.79/listdev.htm'
 
 	usock = urllib2.urlopen(url)
 	html = usock.read()
