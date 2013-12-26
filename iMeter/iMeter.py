@@ -90,6 +90,21 @@ def main():
 	mqttc.on_subscribe = on_subscribe
 	mqttc.connect("192.168.1.10", 1883, 60)
 
+	#Xively
+	r, mid = mosq.publish("imeter/xively/id", "123456789", retain=True)
+	if r != mosquitto.MOSQ_ERR_SUCCESS:
+		print "ERROR"
+	else:
+		waitingFor.append(mid)
+
+	#Xively
+	r, mid = mosq.publish("imeter/xively/datastreams", "power, energy, energySpent", retain=True)
+	if r != mosquitto.MOSQ_ERR_SUCCESS:
+		print "ERROR"
+	else:
+		waitingFor.append(mid)
+
+
 	rc = mqttc.loop()
 	while rc == 0 and len(waitingFor) > 0:
 		rc = mqttc.loop()

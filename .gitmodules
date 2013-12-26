@@ -1,0 +1,3 @@
+[submodule "libxively"]
+	path = libxively
+	url = https://github.com/xively/libxively/
