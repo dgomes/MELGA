@@ -2,7 +2,7 @@ LIBRARY_DIRS= -L /usr/local/lib
 LIBRARIES=-lmosquitto libxively/obj/libxively.a
 INCLUDE_DIRS=-I libxively/src/libxively
 
-CFLAGS=-g -std=gnu99 -Wall -Wextra -DDEBUG
+CFLAGS=-g -std=gnu99 -Wall -DDEBUG
 
 SOURCES := $(wildcard *.c)
 OBJS	:= $(SOURCES:.c=.o)

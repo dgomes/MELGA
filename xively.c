@@ -14,11 +14,11 @@ int create_feed(data_t *data, const char *topic) {
 	feed_t *feed = (feed_t *) malloc(sizeof(feed_t));
 	feed->topic = strdup(feed_topic);
 	memset(&(feed->f) , 0, sizeof( xi_feed_t ) );
-	// set feed properties 
+	// set feed properties
 	feed->f.datastream_count = 0;
 	feed->apikey = NULL;
 	feed->updates = 0;
-	
+
 	data->feeds[new_feed] = feed;
 	}
 
@@ -152,7 +152,7 @@ void message_callback(struct mosquitto *mosq, void *userdata, const struct mosqu
 		if(( int ) xi_get_last_error() > 0)
 			fprintf(stderr, "err: %d - %s\n", ( int ) xi_get_last_error(), xi_get_error_string( xi_get_last_error() ) );
 		else
-			syslog(LOG_INFO, "Published <%s> to feed_id:%s", feeds[feed_i]->topic, feeds[feed_i]->f.feed_id);
+			syslog(LOG_INFO, "Published <%s> to feed_id:%u", feeds[feed_i]->topic, feeds[feed_i]->f.feed_id);
 		// destroy the context cause we don't need it anymore
 		xi_delete_context( xi_context );
 
