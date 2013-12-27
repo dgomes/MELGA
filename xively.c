@@ -61,14 +61,14 @@ void message_callback(struct mosquitto *mosq, void *userdata, const struct mosqu
 		if(strstr(message->topic, "/xively/feedid") != NULL) {
 			data->feeds[feed_i]->f.feed_id = atoi(message->payload);
 
-			DBG("%s feedid = %s\n", data->feeds[feed_i]->topic, message->payload);
+			DBG("%s feedid = %s\n", data->feeds[feed_i]->topic, (char *) message->payload);
 			return;
 		}
 
 		if(strstr(message->topic, "/xively/apikey") != NULL) {
 			data->feeds[feed_i]->apikey = strdup(message->payload);
 
-			DBG("%s apikey = %s\n", data->feeds[feed_i]->topic, message->payload);
+			DBG("%s apikey = %s\n", data->feeds[feed_i]->topic, (char *) message->payload);
 			return;
 		}
 
@@ -88,7 +88,7 @@ void message_callback(struct mosquitto *mosq, void *userdata, const struct mosqu
 			}
 			free(ds);
 
-			DBG("%s datastreams = %s\n", data->feeds[feed_i]->topic, message->payload);
+			DBG("%s datastreams = %s\n", data->feeds[feed_i]->topic, (char *) message->payload);
 			return;
 		}
 	}
@@ -127,7 +127,7 @@ void message_callback(struct mosquitto *mosq, void *userdata, const struct mosqu
 			} else {
 				//it's an int
 				xi_set_value_i32(p, num);
-				DBG("%s -> %ld\n", d->datastream_id, num);
+				DBG("%s -> %ld\n", d->datastream_id, (long int) num);
 			}
 		}
 	}
