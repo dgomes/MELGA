@@ -16,6 +16,7 @@ feed_t *init_feed(const char* topic, int xi_feed_id) {
 };
 
 void free_feed(feed_t *feed) {
+	free((void *)feed->apikey);
 	free((void *)feed->topic);
 	free((void *)feed);
 };
@@ -156,6 +157,11 @@ void message_callback(struct mosquitto *mosq, void *userdata, const struct mosqu
 	//Have we received updates on all datastreams?
 	if(updated == feeds[feed_i]->f.datastream_count) {
 		fprintf(stderr,"SEND TO XIVELY!\n");
+
+		if(feeds[feed_i]->apikey == NULL) {
+			fprintf(stderr, "Failed to publish to xively.com - API Key missing for feed %s\n", feeds[feed_i]->topic);
+			return;
+		}
 
 		xi_context_t* xi_context = xi_create_context( XI_HTTP, feeds[feed_i]->apikey , feeds[feed_i]->f.feed_id);
 		// check if everything works
