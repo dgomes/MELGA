@@ -1,19 +1,31 @@
 #include "xively.h"
 
-feed_t *init_feed(const char* topic, int xi_feed_id) {
-	feed_t *feed = (feed_t *) malloc(sizeof(feed_t));
+int create_feed(data_t *data, const char *topic) {
+	//configure feed/datastreams
+	data->n_feeds++;
+	data->feeds = realloc(data->feeds, data->n_feeds * sizeof(feed_t *));
+	unsigned new_feed = data->n_feeds-1;
 
-	feed->topic = strdup(topic);
+	char *t_free = strdup(topic);
+	char *t = t_free;
+	char *feed_topic = strsep(&t, "/");
+
+	{ //INIT FEED
+	feed_t *feed = (feed_t *) malloc(sizeof(feed_t));
+	feed->topic = strdup(feed_topic);
 	memset(&(feed->f) , 0, sizeof( xi_feed_t ) );
-	// set datastream count
-	feed->f.feed_id = xi_feed_id;
+	// set feed properties 
 	feed->f.datastream_count = 0;
 	feed->apikey = NULL;
-
 	feed->updates = 0;
+	
+	data->feeds[new_feed] = feed;
+	}
 
-	return feed;
-};
+	free(t_free);
+
+	return new_feed;
+}
 
 void free_feed(feed_t *feed) {
 	free((void *)feed->apikey);
@@ -21,47 +33,12 @@ void free_feed(feed_t *feed) {
 	free((void *)feed);
 };
 
-int updateFeed(char *ApiKey, int feed_id, feed_t *feed) {
-	// create the xi library context
-	xi_context_t* xi_context = xi_create_context( XI_HTTP, ApiKey , feed_id );
-
-	// check if everything works
-	if( xi_context == 0 ) {
-			return -1;
-	}
-
-	xi_feed_update( xi_context, &feed->f );
-
-	if(( int ) xi_get_last_error() > 0)
-		printf( "err: %d - %s\n", ( int ) xi_get_last_error(), xi_get_error_string( xi_get_last_error() ) );
-
-	// destroy the context cause we don't need it anymore
-	xi_delete_context( xi_context );
-
-	return 0;
-}
-
-int create_feed(data_t *data, const char *topic) {
-	//configure feed/datastreams
-	data->n_feeds++;
-	data->feeds = realloc(data->feeds, data->n_feeds * sizeof(feed_t *));
-
-	char *t_free = malloc(strlen(topic));
-	char *t = t_free;
-	sprintf(t, "%s", topic);
-	char *feed_topic = strsep(&t, "/");
-
-	data->feeds[data->n_feeds-1] = init_feed(feed_topic, -1);
-	free(t_free);
-
-	return data->n_feeds-1;
-}
 
 int exist_feed_topic(data_t *data, const char *topic) {
 	feed_t **feeds = data->feeds;
 	if(feeds == NULL) return -1;
 
-	int i = data->last_feed;
+	unsigned i = data->last_feed;
 	do {
 		if(!strncmp(topic, feeds[i]->topic, strlen(feeds[i]->topic))) {
 			data->last_feed = i;
@@ -84,14 +61,14 @@ void message_callback(struct mosquitto *mosq, void *userdata, const struct mosqu
 		if(strstr(message->topic, "/xively/feedid") != NULL) {
 			data->feeds[feed_i]->f.feed_id = atoi(message->payload);
 
-			fprintf(stderr, "%s feedid = %s\n", data->feeds[feed_i]->topic, message->payload);
+			DBG("%s feedid = %s\n", data->feeds[feed_i]->topic, message->payload);
 			return;
 		}
 
 		if(strstr(message->topic, "/xively/apikey") != NULL) {
 			data->feeds[feed_i]->apikey = strdup(message->payload);
 
-			fprintf(stderr, "%s apikey = %s\n", data->feeds[feed_i]->topic, message->payload);
+			DBG("%s apikey = %s\n", data->feeds[feed_i]->topic, message->payload);
 			return;
 		}
 
@@ -101,7 +78,7 @@ void message_callback(struct mosquitto *mosq, void *userdata, const struct mosqu
 			data->feeds[feed_i]->f.datastream_count = 0;
 			while ((datastream = strsep(&ds, " ,")) != NULL) {
 				if(!strlen(datastream)) continue;
-				char *sub = (char *) malloc(strlen(data->feeds[feed_i]->topic) + 1 + strlen(datastream));
+				char *sub = (char *) malloc(strlen(data->feeds[feed_i]->topic) + 1 + strlen(datastream)+1);
 					sprintf(sub, "%s/%s", data->feeds[feed_i]->topic, datastream);
 				mosquitto_subscribe(mosq, NULL, sub, 2);
 				free(sub);
@@ -111,7 +88,7 @@ void message_callback(struct mosquitto *mosq, void *userdata, const struct mosqu
 			}
 			free(ds);
 
-			fprintf(stderr, "%s datastreams = %s\n", data->feeds[feed_i]->topic, message->payload);
+			DBG("%s datastreams = %s\n", data->feeds[feed_i]->topic, message->payload);
 			return;
 		}
 	}
@@ -123,7 +100,7 @@ void message_callback(struct mosquitto *mosq, void *userdata, const struct mosqu
 	}
 	unsigned updated = 0;
 	char *datastream = strchr(message->topic, '/')+1; // 1 to skip /
-	for(int i=0; i<feeds[feed_i]->f.datastream_count; i++) {
+	for(unsigned i=0; i<feeds[feed_i]->f.datastream_count; i++) {
 		xi_datastream_t* d  = &data->feeds[feed_i]->f.datastreams[i];
 
 		if(d->datapoint_count) updated++;
@@ -142,7 +119,7 @@ void message_callback(struct mosquitto *mosq, void *userdata, const struct mosqu
 				float numf = strtof(message->payload, &endptr);
 				if(*endptr == '\0') {
 					xi_set_value_f32(p, numf);
-					fprintf(stderr,"%s -> %f\n", d->datastream_id, strtof(message->payload, NULL));
+					DBG("%s -> %f\n", d->datastream_id, strtof(message->payload, NULL));
 				} else {
 					//we don't publish strings to xively...
 					d->datapoint_count = 0;
@@ -150,13 +127,13 @@ void message_callback(struct mosquitto *mosq, void *userdata, const struct mosqu
 			} else {
 				//it's an int
 				xi_set_value_i32(p, num);
-				fprintf(stderr, "%s -> %ld\n", d->datastream_id, num);
+				DBG("%s -> %ld\n", d->datastream_id, num);
 			}
 		}
 	}
 	//Have we received updates on all datastreams?
 	if(updated == feeds[feed_i]->f.datastream_count) {
-		fprintf(stderr,"SEND TO XIVELY!\n");
+		DBG("SEND TO XIVELY!\n");
 
 		if(feeds[feed_i]->apikey == NULL) {
 			fprintf(stderr, "Failed to publish to xively.com - API Key missing for feed %s\n", feeds[feed_i]->topic);
@@ -174,12 +151,13 @@ void message_callback(struct mosquitto *mosq, void *userdata, const struct mosqu
 
 		if(( int ) xi_get_last_error() > 0)
 			fprintf(stderr, "err: %d - %s\n", ( int ) xi_get_last_error(), xi_get_error_string( xi_get_last_error() ) );
-
+		else
+			syslog(LOG_INFO, "Published <%s> to feed_id:%s", feeds[feed_i]->topic, feeds[feed_i]->f.feed_id);
 		// destroy the context cause we don't need it anymore
 		xi_delete_context( xi_context );
 
 		// Erase everything
-		for(int i=0; i<feeds[feed_i]->f.datastream_count; i++) {
+		for(unsigned i=0; i<feeds[feed_i]->f.datastream_count; i++) {
 			xi_datastream_t* d  = &data->feeds[feed_i]->f.datastreams[i];
 			d->datapoint_count = 0;
 			xi_datapoint_t *p = &d->datapoints[0];
@@ -189,32 +167,31 @@ void message_callback(struct mosquitto *mosq, void *userdata, const struct mosqu
 	}
 }
 
-void connect_callback(struct mosquitto *mosq, void *userdata, int result)
-{
-	int i;
+void connect_callback(struct mosquitto *mosq, void *userdata, int result) {
 	if(!result){
 		/* Subscribe to broker information topics on successful connect. */
+		syslog(LOG_NOTICE, "Connected");
 		mosquitto_subscribe(mosq, NULL, "+/xively/#", 2);
 	}else{
 		fprintf(stderr, "Connect failed\n");
 	}
 }
 
-void my_log_callback(struct mosquitto *mosq, void *userdata, int level, const char *str)
-{
+void log_callback(struct mosquitto *mosq, void *userdata, int level, const char *str) {
 	/* Pring all log messages regardless of level. */
 	fprintf(stderr,"[MQTT LOG] %s\n", str);
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
 	char id[30] = "xively";
-	int i;
 	char *host = "192.168.1.10";
 	int port = 1883;
 	int keepalive = 60;
 	bool clean_session = true;
 	struct mosquitto *mosq = NULL;
+
+	setlogmask (LOG_UPTO (LOG_INFO));
+	openlog(id, LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
 
 	mosquitto_lib_init();
 
@@ -231,6 +208,7 @@ int main(int argc, char *argv[])
 
 	mosquitto_connect_callback_set(mosq, connect_callback);
 	mosquitto_message_callback_set(mosq, message_callback);
+	mosquitto_log_callback_set(mosq, log_callback);
 
 	if(mosquitto_connect(mosq, host, port, keepalive)){
 		fprintf(stderr, "Unable to connect.\n");
@@ -241,7 +219,9 @@ int main(int argc, char *argv[])
 	}
 	mosquitto_destroy(mosq);
 	mosquitto_lib_cleanup();
-	for(int i=0; i<data.n_feeds; i++)
+	for(unsigned i=0; i<data.n_feeds; i++)
 		free_feed(data.feeds[i]);
+	syslog(LOG_NOTICE, "shutdown completed");
+	closelog();
 	return 0;
 }
