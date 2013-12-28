@@ -95,7 +95,7 @@ void message_callback(struct mosquitto *mosq, void *userdata, const struct mosqu
 
 	feed_t **feeds = data->feeds;
 	if(feed_i == -1) {
-		fprintf(stderr, "Feed for topic \"%s\" hasn't been created (yet)\n", message->topic);
+		syslog(LOG_ERR, "Feed for topic \"%s\" hasn't been created (yet)", message->topic);
 		return;
 	}
 	unsigned updated = 0;
@@ -136,21 +136,21 @@ void message_callback(struct mosquitto *mosq, void *userdata, const struct mosqu
 		DBG("SEND TO XIVELY!\n");
 
 		if(feeds[feed_i]->apikey == NULL) {
-			fprintf(stderr, "Failed to publish to xively.com - API Key missing for feed %s\n", feeds[feed_i]->topic);
+			syslog(LOG_ERR, "Failed to publish to xively.com - API Key missing for feed %s", feeds[feed_i]->topic);
 			return;
 		}
 
 		xi_context_t* xi_context = xi_create_context( XI_HTTP, feeds[feed_i]->apikey , feeds[feed_i]->f.feed_id);
 		// check if everything works
 		if( xi_context == 0 ) {
-			fprintf(stderr, "Error creating xi_context\n");
+			syslog(LOG_ERR, "Error creating xi_context");
 			return;
 		}
 
 		xi_feed_update( xi_context, &feeds[feed_i]->f );
 
 		if(( int ) xi_get_last_error() > 0)
-			fprintf(stderr, "err: %d - %s\n", ( int ) xi_get_last_error(), xi_get_error_string( xi_get_last_error() ) );
+			syslog(LOG_ERR, "err: %d - %s", ( int ) xi_get_last_error(), xi_get_error_string( xi_get_last_error()));
 		else
 			syslog(LOG_INFO, "Published <%s> to feed_id:%u", feeds[feed_i]->topic, feeds[feed_i]->f.feed_id);
 		// destroy the context cause we don't need it anymore
@@ -173,13 +173,13 @@ void connect_callback(struct mosquitto *mosq, void *userdata, int result) {
 		syslog(LOG_NOTICE, "Connected");
 		mosquitto_subscribe(mosq, NULL, "+/xively/#", 2);
 	}else{
-		fprintf(stderr, "Connect failed\n");
+		syslog(LOG_ERR, "Connection to broker failed");
 	}
 }
 
 void log_callback(struct mosquitto *mosq, void *userdata, int level, const char *str) {
 	/* Pring all log messages regardless of level. */
-	fprintf(stderr,"[MQTT LOG] %s\n", str);
+	syslog(LOG_DEBUG, "[MQTT LOG] %s", str);
 }
 
 int main(int argc, char *argv[]) {
@@ -190,8 +190,49 @@ int main(int argc, char *argv[]) {
 	bool clean_session = true;
 	struct mosquitto *mosq = NULL;
 
+	#ifndef DEBUG
+	/* Our process ID and Session ID */
+	pid_t pid, sid;
+	
+	/* Fork off the parent process */
+	pid = fork();
+	if (pid < 0) {
+		exit(EXIT_FAILURE);
+	}
+	/* If we got a good PID, then
+	   we can exit the parent process. */
+	if (pid > 0) {
+		exit(EXIT_SUCCESS);
+	}
+
+	/* Change the file mode mask */
+	umask(0);
+	#endif	
+	
+	/* Open any logs here */	
 	setlogmask (LOG_UPTO (LOG_INFO));
 	openlog(id, LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
+		
+        #ifndef DEBUG
+	/* Create a new SID for the child process */
+	sid = setsid();
+	if (sid < 0) {
+		/* Log the failure */
+		syslog(LOG_ERR, "Failed to create a new SID");
+		exit(EXIT_FAILURE);
+	}
+
+	/* Change the current working directory */
+        if ((chdir("/tmp")) < 0) {
+                /* Log the failure */
+                exit(EXIT_FAILURE);
+        }
+        
+        /* Close out the standard file descriptors */
+	close(STDIN_FILENO);
+        close(STDOUT_FILENO);
+        close(STDERR_FILENO);
+	#endif
 
 	mosquitto_lib_init();
 
@@ -202,8 +243,8 @@ int main(int argc, char *argv[]) {
 
 	mosq = mosquitto_new(id, clean_session, &data);
 	if(!mosq){
-		fprintf(stderr, "Error: Out of memory.\n");
-		return 1;
+		syslog(LOG_ERR, "Error: Out of memory.");
+		exit(EXIT_FAILURE);
 	}
 
 	mosquitto_connect_callback_set(mosq, connect_callback);
@@ -211,17 +252,20 @@ int main(int argc, char *argv[]) {
 	mosquitto_log_callback_set(mosq, log_callback);
 
 	if(mosquitto_connect(mosq, host, port, keepalive)){
-		fprintf(stderr, "Unable to connect.\n");
-		return 1;
+		syslog(LOG_ERR, "Unable to connect.");
+		return(EXIT_FAILURE);
 	}
+	
+	//we don't do anything besides waiting for new values to publish, so lets loop_forever
+	mosquitto_loop_forever(mosq, -1, 1);
 
-	while(!mosquitto_loop(mosq, -1, 1)){
-	}
+	/* Cleanup */
 	mosquitto_destroy(mosq);
 	mosquitto_lib_cleanup();
 	for(unsigned i=0; i<data.n_feeds; i++)
 		free_feed(data.feeds[i]);
+
 	syslog(LOG_NOTICE, "shutdown completed");
 	closelog();
-	return 0;
+	exit(EXIT_SUCCESS);
 }

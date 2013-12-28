@@ -7,6 +7,14 @@
 #include <time.h>
 #include <stdio.h>
 
+#ifndef DEBUG
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <unistd.h>
+#endif
+
 #include <syslog.h>
 #include <xi_debug.h>
 #include <xively.h>
