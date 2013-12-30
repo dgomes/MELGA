@@ -70,7 +70,7 @@ def on_message(mqttc, userdata, msg):
 def publish(mqttc, topic, data):
 	logging.info("Publish data")
 	for key in data.keys():
-		r, mid = mqttc.publish(topic + "/" + key, data[key], retain=False)
+		r, mid = mqttc.publish(topic + "/" + key, data[key], retain=True)
 		if r != mosquitto.MOSQ_ERR_SUCCESS:
 			logging.error("ERROR on publish")
 		else:
@@ -85,7 +85,7 @@ def on_log(mqttc, obj, level, string):
 	logging.debug(string)
 
 def main():
-	logging.basicConfig(format='[%(asctime)s] %(levelname)s - %(message)s', datefmt='%d/%m/%Y %I:%M:%S %p', level=logging.INFO)
+	logging.basicConfig(format='[%(asctime)s] %(levelname)s - %(message)s', datefmt='%d/%m/%Y %I:%M:%S %p', level=logging.DEBUG)
 	logging.info("iMeter - v1")
 
 	#get data
