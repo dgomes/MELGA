@@ -92,7 +92,8 @@ def publish(mqttc, topic, data):
 
 def on_publish(mqttc, obj, mid):
 	logging.debug("on_publish " + str(mid) + " in " + str(waitingFor))
-
+	if mid in waitingFor:
+		waitingFor.remove(mid)
 def on_log(mqttc, obj, level, string):
 	logging.debug(string)
 
