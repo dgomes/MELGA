@@ -7,12 +7,6 @@ from datetime import datetime
 import calendar
 #Customize here
 
-xively = dict(
-feedid = "1873623042", #Xively FeedID
-apikey = "g1KD3DJBOKoLMG0hZ0jCHWgMpefJdblml9TfXWTzgMXhQHvn", #Xively API Key
-datastreams = "numberWirelessClients, uploadRate, downloadRate, lastUpdate"
-)
-
 #DON'T EDIT BELOW!!!
 waitingFor = []
 
@@ -39,21 +33,14 @@ def getSNMP():
 	else:
 		for name, val in varBinds:
 			print('%s = %s' % (name.prettyPrint(), val.prettyPrint()))
-			data[str(name.prettyPrint())] = int(val)
+			if name.prettyPrint() == 'AIRPORT-BASESTATION-3-MIB::wirelessNumber."0"':
+				data["numberWirelessClients"] = int(val)
+			else:
+				data[str(name.prettyPrint())] = int(val)
 	return data
-
-def setup_xively(mqttc, topic, xively_conf):
-	for key in xively_conf.keys():
-		r, mid = mqttc.publish(topic + "/xively/" + key, xively_conf[key], retain=True)
-		if r != mosquitto.MOSQ_ERR_SUCCESS:
-			logging.error("ERROR on setup_xively")
-		else:
-			waitingFor.append(mid)
 
 def on_connect(mqttc, obj, rc):
 	logging.info("Connected")
-	if "setup" in sys.argv:
-		setup_xively(mqttc, "airport", xively)
 
 	r, mid = mqttc.subscribe('airport/update')
 	waitingFor.append(mid)
