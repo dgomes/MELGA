@@ -15,6 +15,7 @@
 #include <unistd.h>
 #endif
 
+#include <libconfig.h>
 #include <syslog.h>
 #include <xi_debug.h>
 #include <xively.h>
@@ -24,13 +25,13 @@
 
 #ifdef DEBUG
 #define DBG(...) \
-            do { if (DEBUG) fprintf(stderr, ##__VA_ARGS__); } while (0)
+            do { fprintf(stderr, ##__VA_ARGS__); } while (0)
 #define NOTICE(...) \
-            do { if (DEBUG) fprintf(stdout, ##__VA_ARGS__); } while (0)
+            do { fprintf(stdout, "\x1B[36m"); fprintf(stdout, ##__VA_ARGS__); fprintf(stdout, "\x1B[0m\n"); } while (0)
 #define ERR(...) \
-            do { if (DEBUG) fprintf(stdout, ##__VA_ARGS__); } while (0)
+            do { fprintf(stdout, "\x1B[31m"); fprintf(stdout, ##__VA_ARGS__); fprintf(stdout, "\x1B[0m\n"); } while (0)
 #define INFO(...) \
-            do { if (DEBUG) fprintf(stdout, ##__VA_ARGS__); } while (0)
+            do { fprintf(stdout, "\x1B[32m"); fprintf(stdout, ##__VA_ARGS__); fprintf(stdout, "\x1B[0m\n"); } while (0)
 #else
 #define DBG(fmt, ...)
 #define NOTICE(...) \
