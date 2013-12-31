@@ -9,12 +9,6 @@ from BeautifulSoup import BeautifulSoup
 #Customize here
 url = 'http://192.168.1.79/listdev.htm'
 
-xively = dict(
-feedid = "1873623042", #Xively FeedID
-apikey = "g1KD3DJBOKoLMG0hZ0jCHWgMpefJdblml9TfXWTzgMXhQHvn", #Xively API Key
-datastreams = "power, energy, energySpent"
-)
-
 #DON'T EDIT BELOW!!!
 waitingFor = []
 
@@ -40,18 +34,8 @@ def parseWebpage():
 			'power': power,
 			'lastupdate': str(lastupdate)}
 
-def setup_xively(mqttc, topic, xively_conf):
-	for key in xively_conf.keys():
-		r, mid = mqttc.publish(topic + "/xively/" + key, xively_conf[key], retain=True)
-		if r != mosquitto.MOSQ_ERR_SUCCESS:
-			logging.error("ERROR on setup_xively")
-		else:
-			waitingFor.append(mid)
-
 def on_connect(mqttc, obj, rc):
 	logging.info("Connected")
-	if "setup" in sys.argv:
-		setup_xively(mqttc, "imeter", xively)
 
 	r, mid = mqttc.subscribe("imeter/energy")
 	waitingFor.append(mid)
