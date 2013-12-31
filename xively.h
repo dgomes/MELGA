@@ -25,8 +25,20 @@
 #ifdef DEBUG
 #define DBG(...) \
             do { if (DEBUG) fprintf(stderr, ##__VA_ARGS__); } while (0)
+#define NOTICE(...) \
+            do { if (DEBUG) fprintf(stdout, ##__VA_ARGS__); } while (0)
+#define ERR(...) \
+            do { if (DEBUG) fprintf(stdout, ##__VA_ARGS__); } while (0)
+#define INFO(...) \
+            do { if (DEBUG) fprintf(stdout, ##__VA_ARGS__); } while (0)
 #else
-#define DBG(fmt, ...) 
+#define DBG(fmt, ...)
+#define NOTICE(...) \
+			syslog(LOG_NOTICE, ##__VA_ARGS__);
+#define ERR(...) \
+			syslog(LOG_ERR, ##__VA_ARGS__);
+#define INFO(...) \
+			syslog(LOG_INFO, ##__VA_ARGS__);
 #endif
 
 typedef struct {

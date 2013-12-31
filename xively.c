@@ -84,6 +84,7 @@ void message_callback(struct mosquitto *mosq, void *userdata, const struct mosqu
 				free(sub);
 				xi_datastream_t* d	= &data->feeds[feed_i]->f.datastreams[data->feeds[feed_i]->f.datastream_count];
 				xi_str_copy_untiln(d->datastream_id, sizeof( d->datastream_id ), datastream, '\0');
+				DBG("%s\n", d->datastream_id);
 				data->feeds[feed_i]->f.datastream_count++;
 			}
 			free(ds);
@@ -95,7 +96,7 @@ void message_callback(struct mosquitto *mosq, void *userdata, const struct mosqu
 
 	feed_t **feeds = data->feeds;
 	if(feed_i == -1) {
-		syslog(LOG_ERR, "Feed for topic \"%s\" hasn't been created (yet)", message->topic);
+		ERR("Feed for topic \"%s\" hasn't been created (yet)", message->topic);
 		return;
 	}
 	unsigned updated = 0;
@@ -104,8 +105,7 @@ void message_callback(struct mosquitto *mosq, void *userdata, const struct mosqu
 		xi_datastream_t* d  = &data->feeds[feed_i]->f.datastreams[i];
 
 		if(d->datapoint_count) updated++;
-
-		if(!strcmp(datastream, d->datastream_id)) {
+		if(!strncmp(datastream, d->datastream_id, sizeof(d->datastream_id)-1)) {
 			d->datapoint_count = 1;
 			updated++;
 			xi_datapoint_t *p = &d->datapoints[0];
@@ -136,23 +136,23 @@ void message_callback(struct mosquitto *mosq, void *userdata, const struct mosqu
 		DBG("SEND TO XIVELY!\n");
 
 		if(feeds[feed_i]->apikey == NULL) {
-			syslog(LOG_ERR, "Failed to publish to xively.com - API Key missing for feed %s", feeds[feed_i]->topic);
+			ERR("Failed to publish to xively.com - API Key missing for feed %s", feeds[feed_i]->topic);
 			return;
 		}
 
 		xi_context_t* xi_context = xi_create_context( XI_HTTP, feeds[feed_i]->apikey , feeds[feed_i]->f.feed_id);
 		// check if everything works
 		if( xi_context == 0 ) {
-			syslog(LOG_ERR, "Error creating xi_context");
+			ERR("Error creating xi_context");
 			return;
 		}
 
 		xi_feed_update( xi_context, &feeds[feed_i]->f );
 
 		if(( int ) xi_get_last_error() > 0)
-			syslog(LOG_ERR, "err: %d - %s", ( int ) xi_get_last_error(), xi_get_error_string( xi_get_last_error()));
+			ERR("err: %d - %s", ( int ) xi_get_last_error(), xi_get_error_string( xi_get_last_error()));
 		else
-			syslog(LOG_INFO, "Published <%s> to feed_id:%u", feeds[feed_i]->topic, feeds[feed_i]->f.feed_id);
+			INFO("Published <%s> to feed_id:%u", feeds[feed_i]->topic, feeds[feed_i]->f.feed_id);
 		// destroy the context cause we don't need it anymore
 		xi_delete_context( xi_context );
 
@@ -170,30 +170,23 @@ void message_callback(struct mosquitto *mosq, void *userdata, const struct mosqu
 void connect_callback(struct mosquitto *mosq, void *userdata, int result) {
 	if(!result){
 		/* Subscribe to broker information topics on successful connect. */
-		syslog(LOG_NOTICE, "Connected");
+		NOTICE("Connected");
 		mosquitto_subscribe(mosq, NULL, "+/xively/#", 2);
 	}else{
-		syslog(LOG_ERR, "Connection to broker failed");
+		ERR("Connection to broker failed");
 	}
 }
 
 void log_callback(struct mosquitto *mosq, void *userdata, int level, const char *str) {
 	/* Pring all log messages regardless of level. */
-	syslog(LOG_DEBUG, "[MQTT LOG] %s", str);
+	DBG("[MQTT LOG] %s\n", str);
 }
 
-int main(int argc, char *argv[]) {
-	char id[30] = "xively";
-	char *host = "192.168.1.10";
-	int port = 1883;
-	int keepalive = 60;
-	bool clean_session = true;
-	struct mosquitto *mosq = NULL;
-
+void daemonize() {
 	#ifndef DEBUG
 	/* Our process ID and Session ID */
 	pid_t pid, sid;
-	
+
 	/* Fork off the parent process */
 	pid = fork();
 	if (pid < 0) {
@@ -207,18 +200,12 @@ int main(int argc, char *argv[]) {
 
 	/* Change the file mode mask */
 	umask(0);
-	#endif	
-	
-	/* Open any logs here */	
-	setlogmask (LOG_UPTO (LOG_INFO));
-	openlog(id, LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
-		
-        #ifndef DEBUG
+
 	/* Create a new SID for the child process */
 	sid = setsid();
 	if (sid < 0) {
 		/* Log the failure */
-		syslog(LOG_ERR, "Failed to create a new SID");
+		ERR("Failed to create a new SID");
 		exit(EXIT_FAILURE);
 	}
 
@@ -227,12 +214,27 @@ int main(int argc, char *argv[]) {
                 /* Log the failure */
                 exit(EXIT_FAILURE);
         }
-        
+
         /* Close out the standard file descriptors */
 	close(STDIN_FILENO);
         close(STDOUT_FILENO);
         close(STDERR_FILENO);
 	#endif
+}
+
+int main(int argc, char *argv[]) {
+	char id[30] = "xively";
+	char *host = "192.168.1.10";
+	int port = 1883;
+	int keepalive = 60;
+	bool clean_session = true;
+	struct mosquitto *mosq = NULL;
+
+	/* Open any logs here */
+	setlogmask (LOG_UPTO (LOG_INFO));
+	openlog(id, LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
+
+	daemonize();
 
 	mosquitto_lib_init();
 
@@ -243,7 +245,7 @@ int main(int argc, char *argv[]) {
 
 	mosq = mosquitto_new(id, clean_session, &data);
 	if(!mosq){
-		syslog(LOG_ERR, "Error: Out of memory.");
+		ERR("Error: Out of memory.");
 		exit(EXIT_FAILURE);
 	}
 
@@ -252,10 +254,10 @@ int main(int argc, char *argv[]) {
 	mosquitto_log_callback_set(mosq, log_callback);
 
 	if(mosquitto_connect(mosq, host, port, keepalive)){
-		syslog(LOG_ERR, "Unable to connect.");
+		ERR("Unable to connect.");
 		return(EXIT_FAILURE);
 	}
-	
+
 	//we don't do anything besides waiting for new values to publish, so lets loop_forever
 	mosquitto_loop_forever(mosq, -1, 1);
 
@@ -265,7 +267,7 @@ int main(int argc, char *argv[]) {
 	for(unsigned i=0; i<data.n_feeds; i++)
 		free_feed(data.feeds[i]);
 
-	syslog(LOG_NOTICE, "shutdown completed");
+	NOTICE("shutdown completed");
 	closelog();
 	exit(EXIT_SUCCESS);
 }
