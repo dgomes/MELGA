@@ -18,7 +18,6 @@ int create_feed(data_t *data, const char *topic) {
 	data->feeds[new_feed] = feed;
 	}
 
-
 	return new_feed;
 }
 
@@ -244,11 +243,12 @@ int main(int argc, char *argv[]) {
 	int keepalive = 60;
 	bool clean_session = true;
 	struct mosquitto *mosq = NULL;
-	NOTICE("Xively Publisher started");
 
 	/* Open any logs here */
 	setlogmask (LOG_UPTO (LOG_INFO));
 	openlog(id, LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
+
+	NOTICE("Xively Publisher started");
 
 	daemonize();
 
@@ -282,8 +282,10 @@ int main(int argc, char *argv[]) {
 	/* Cleanup */
 	mosquitto_destroy(mosq);
 	mosquitto_lib_cleanup();
+
 	for(unsigned i=0; i<data.n_feeds; i++)
 		free_feed(data.feeds[i]);
+	free(data->feeds);
 
 	NOTICE("shutdown completed");
 	closelog();
