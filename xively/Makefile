@@ -1,6 +1,6 @@
 LIBRARY_DIRS= -L /usr/local/lib
 LIBRARIES=`pkg-config --libs libconfig` -lmosquitto libxively/obj/libxively.a
-INCLUDE_DIRS=-I libxively/src/libxively
+INCLUDE_DIRS=-I.. -I libxively/src/libxively
 
 CFLAGS=-g -std=gnu99 -Wall -DDEBUG=1 `pkg-config --cflags libconfig`
 

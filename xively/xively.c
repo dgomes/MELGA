@@ -285,7 +285,7 @@ int main(int argc, char *argv[]) {
 
 	for(unsigned i=0; i<data.n_feeds; i++)
 		free_feed(data.feeds[i]);
-	free(data->feeds);
+	free(data.feeds);
 
 	NOTICE("shutdown completed");
 	closelog();
