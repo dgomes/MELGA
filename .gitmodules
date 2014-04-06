@@ -1,5 +1,5 @@
 [submodule "libxively"]
-	path = libxively
+	path = xively/libxively
 	url = https://github.com/xively/libxively/
 [submodule "serial/arduino-serial"]
 	path = serial/arduino-serial
