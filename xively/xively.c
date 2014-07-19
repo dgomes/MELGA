@@ -42,7 +42,7 @@ int exist_feed_topic(data_t *data, const char *topic) {
 	} while(i!=data->last_feed);
 	return -1;
 }
-void read_conf(struct mosquitto *mosq, data_t *data, const char *conf_filename) {
+void configure(struct mosquitto *mosq, data_t *data, const char *conf_filename) {
 
 	config_t cfg;
 	config_setting_t *setting;
@@ -196,46 +196,6 @@ void log_callback(struct mosquitto *mosq, void *userdata, int level, const char 
 	#endif
 }
 
-void daemonize() {
-	#ifndef DEBUG
-	/* Our process ID and Session ID */
-	pid_t pid, sid;
-
-	/* Fork off the parent process */
-	pid = fork();
-	if (pid < 0) {
-		exit(EXIT_FAILURE);
-	}
-	/* If we got a good PID, then
-	   we can exit the parent process. */
-	if (pid > 0) {
-		exit(EXIT_SUCCESS);
-	}
-
-	/* Change the file mode mask */
-	umask(0);
-
-	/* Create a new SID for the child process */
-	sid = setsid();
-	if (sid < 0) {
-		/* Log the failure */
-		ERR("Failed to create a new SID");
-		exit(EXIT_FAILURE);
-	}
-
-	/* Change the current working directory */
-        if ((chdir("/tmp")) < 0) {
-                /* Log the failure */
-                exit(EXIT_FAILURE);
-        }
-
-        /* Close out the standard file descriptors */
-	close(STDIN_FILENO);
-    close(STDOUT_FILENO);
-    close(STDERR_FILENO);
-	#endif
-}
-
 int main(int argc, char *argv[]) {
 	char id[30] = "xively";
 	char *host = "192.168.1.10";
@@ -274,7 +234,7 @@ int main(int argc, char *argv[]) {
 		ERR("Unable to connect.");
 		return(EXIT_FAILURE);
 	}
-	read_conf(mosq, &data, "xively.cfg");
+	configure(mosq, &data, "xively.cfg");
 
 	/* do anything besides waiting for new values to publish, so lets loop_forever */
 	mosquitto_loop_forever(mosq, 5000, 1);
