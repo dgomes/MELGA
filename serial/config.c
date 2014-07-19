@@ -13,7 +13,7 @@ int parseArgs(int argc, char *argv[], config_t *c) {
 		{ "server-port",  required_argument,            &server_port,     1 },
 		{ NULL,         0,                      NULL,           0 }
 	};
-	const char *usage = "usage: %s --port devname [--port-speed 115200] [--server localhost] [--server-port 1883]\n";
+	const char *usage = "usage: %s --device custom_name --port devname [--port-speed 115200] [--server localhost] [--server-port 1883]\n";
 
 	while ((ch = getopt_long(argc, argv, "d", longopts, NULL)) != -1) {
 		switch (ch) {
