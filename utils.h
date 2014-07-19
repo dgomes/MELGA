@@ -1,3 +1,14 @@
+#include <stdlib.h>
+#include <syslog.h>
+
+#ifndef DEBUG
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <unistd.h>
+#endif
+
 #ifdef DEBUG
 #define DBG(...) \
             do { fprintf(stderr, ##__VA_ARGS__); } while (0)
@@ -16,3 +27,5 @@
 #define INFO(...) \
             syslog(LOG_INFO, ##__VA_ARGS__);
 #endif
+
+void daemonize();
