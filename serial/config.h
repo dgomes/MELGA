@@ -2,6 +2,8 @@
 #define _CONFIG_H_
 
 #include <getopt.h>
+#include <stdio.h>
+
 #include <jansson.h>
 #include <string.h>
 #include <utils.h>

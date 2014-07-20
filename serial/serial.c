@@ -34,7 +34,7 @@ int setupSerial(char *port, int baudrate) {
 int readSerial(int fd, char *buf, int buf_max, int timeout) {
 	char eolchar = '\n';
 	int sr = serialport_read_until(fd, buf, eolchar, buf_max, timeout);
-	DBG("DEBUG:\t%s\n", buf);
+	DBG("DEBUG:\t%s", buf);
 
 	return sr;
 };
@@ -68,9 +68,7 @@ int arduinoEvent(char *buf, last_update_t *last, config_t *cfg, struct mosquitto
 				asprintf(&payload, "%f", json_real_value(value));
 				mosquitto_publish(mosq, NULL, topic, strlen(payload), payload, 0, true);
 			}
-			else
-				return 2;
-
+			DBG("%s -> %s\n", topic, payload);
 			free(payload);
 			free(topic);
 			iter = json_object_iter_next(root, iter);
@@ -95,21 +93,30 @@ int main( int argc, char* argv[] ) {
 
 	loadDefaults(&cfg);
 
-	char *dump = dumpConfig(&cfg);
-	DBG("%s: %s\n", __FILE__, dump);
+	char *dump = NULL;
+	DBG("%s: %s\n", __FILE__, dump = dumpConfig(&cfg));
+	free(dump);
 
 	if(parseArgs(argc, argv, &cfg)) {
 		exit(1);
 	}
 
-	DBG("%s: %s\n", __FILE__, dumpConfig(&cfg));
+	DBG("%s: %s\n", __FILE__, dump = dumpConfig(&cfg));
+	free(dump);
 
 	if(cfg.conffile != NULL) {
 		if(readConfig(cfg.conffile, &cfg)) {
 			// no configuration file supplied
+			FILE *fp = fopen(cfg.conffile, "w");
+			char *cur_config = dumpConfig(&cfg);
+			fwrite(cur_config, sizeof(char), strlen(cur_config), fp);
+			fclose(fp);
+			free(cur_config);
 			exit(1);
 		}
 	}
+	DBG("%s: %s\n", __FILE__, dump = dumpConfig(&cfg));
+	free(dump);
 
 	if(cfg.port.name == NULL) {
 		printf("You must specify the serial port\n");
@@ -176,7 +183,7 @@ int main( int argc, char* argv[] ) {
 			if (FD_ISSET (i, &read_fd_set)) {
 				if(i == arduino_fd) {
 					if(!readSerial(arduino_fd, buf, BUF_MAX, cfg.port.timeout)) {
-						DBG("Read %lu bytes\n", strlen(buf));
+						DBG("Read %d bytes\n", strlen(buf));
 						arduinoEvent(buf, &last, &cfg, mosq);
 						serialport_flush(arduino_fd);
 					}

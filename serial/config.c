@@ -2,42 +2,49 @@
 
 int parseArgs(int argc, char *argv[], config_t *c) {
 	int ch;
-	int port, port_speed, server, server_port, dev;
 
 	/* options descriptor */
 	const struct option longopts[] = {
-		{ "device",      required_argument,            &dev,           1 },
-		{ "port",      required_argument,            &port,           1 },
-		{ "port-speed",   required_argument,      &port_speed,           1 },
-		{ "server",  required_argument,            &server,     1 },
-		{ "server-port",  required_argument,            &server_port,     1 },
+		{ "device",      required_argument,            0,           1 },
+		{ "port",      required_argument,            0,           1 },
+		{ "port-speed",   required_argument,      0,           1 },
+		{ "server",  required_argument,           0,     1 },
+		{ "server-port",  required_argument,      0,     1 },
 		{ NULL,         0,                      NULL,           0 }
 	};
 	const char *usage = "usage: %s --device custom_name --port devname [--port-speed 115200] [--server localhost] [--server-port 1883]\n";
 
-	while ((ch = getopt_long(argc, argv, "d", longopts, NULL)) != -1) {
+	int option_index = 0;
+
+	while ((ch = getopt_long(argc, argv, "d", longopts, &option_index)) != -1) {
 		switch (ch) {
 			case 'd':
-				fprintf(stderr, "Debug ON\n");
+				DBG("Debug ON\n");
 				break;
-			case 0:
-				if (port) {
-					c->port.name = strdup(optarg);
-					port = 0;
-				} else if (port_speed) {
-					c->port.speed = atoi(optarg);
-					port_speed = 0;
-				} else if (dev) {
-					c->device = strdup(optarg);
-					dev = 0;
-				} else if (server) {
-					c->remote.servername = strdup(optarg);
-					server = 0;
+			case 1:
+				switch(option_index) {
+					case 0:
+						c->device = strdup(optarg);
+						asprintf(&c->conffile, "%s.cfg", optarg);
+						DBG("DEV parse %s\n", c->conffile);		
+						break;
+					case 1:
+						c->port.name = strdup(optarg);
+						break;
+					case 2:
+						c->port.speed = atoi(optarg);
+						break;
+					case 3:
+						c->remote.servername = strdup(optarg);
+						break;
+					case 4:
+						c->remote.port = atoi(optarg);
+						break;
 				}
 				break;
 			case '?':
 			default:
-				printf(usage, argv[0]);
+				fprintf(stdout,usage, argv[0]);
 				return 1;
 		}
 	}
@@ -57,8 +64,8 @@ int loadDefaults(config_t *c) {
 
 char *dumpConfig(config_t *c) {
 	//TODO dump config_t to a json string
-	char *dump = malloc(128);
-	asprintf(&dump, "{ 'device': '%s', 'port': {'name': '%s', 'speed': %d, 'timeout': %d}, 'remote': {'servername': '%s', 'port': %d, 'keepalive': %d } }", c->device, c->port.name, c->port.speed, c->port.timeout, c->remote.servername, c->remote.port, c->remote.keepalive);
+	char *dump;
+	asprintf(&dump, "{ \"device\": \"%s\", \"port\": {\"name\": \"%s\", \"speed\": %d, \"timeout\": %d}, \"remote\": {\"servername\": \"%s\", \"port\": %d, \"keepalive\": %d } }", c->device, c->port.name, c->port.speed, c->port.timeout, c->remote.servername, c->remote.port, c->remote.keepalive);
 
 	return dump;
 }
@@ -86,8 +93,7 @@ int readConfig(const char *filename, config_t *c) {
 		fprintf(stderr, "error: port name missing\n");
 		return 1;
 	}
-	c->port.name = malloc(strlen(json_string_value(name)));
-	snprintf(c->port.name, strlen(json_string_value(name)),"%s", json_string_value(name));
+	asprintf(&c->port.name, "%s", json_string_value(name));
 	json_t *speed = json_object_get(port, "speed");
 	if(!json_is_integer(speed)) {
 		fprintf(stderr, "error: port speed missing\n");
