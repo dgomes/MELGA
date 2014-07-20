@@ -11,7 +11,6 @@
 #include <sys/uio.h>
 #include <unistd.h>
 
-#define DEBUG
 #include "serial.h"
 #include "json.h"
 #include "utils.h"
@@ -40,15 +39,19 @@ int readSerial(int fd, char *buf, int buf_max, int timeout) {
 };
 
 int arduinoEvent(char *buf, last_update_t *last, config_t *cfg, struct mosquitto *mosq) {
-	DBG("arduinoEvent\n");
 	time_t now = last->time;
 	if(checkJSON_integer(buf,"code", 200)==0) {
 		now = time(NULL);
 	};
 	if(strlen(buf)>0) {
-		DBG("push to server\n");
 		json_error_t error;
 		json_t *root = json_loads(buf, 0, &error);
+
+		void *id = json_object_iter_at(root, "id");
+		if(id == NULL)
+			return 1;
+		json_t *json_device = json_object_iter_value(id); 
+		const char *device = json_string_value(json_device);
 
 		const char *key;
 		json_t *value;
@@ -59,15 +62,21 @@ int arduinoEvent(char *buf, last_update_t *last, config_t *cfg, struct mosquitto
 			/* use key and value ... */
 			char *topic = NULL;
 			char *payload = NULL;
-			asprintf(&topic, "%s/%s", cfg->device, key);
+			asprintf(&topic, "%s/%s", device, key);
 			if(json_is_integer(value)) {
 				asprintf(&payload, "%lld", json_integer_value(value));
-				mosquitto_publish(mosq, NULL, topic, strlen(payload), payload, 0, true);
-			}
-			else if(json_is_real(value)) {
+			} else if(json_is_real(value)) {
 				asprintf(&payload, "%f", json_real_value(value));
-				mosquitto_publish(mosq, NULL, topic, strlen(payload), payload, 0, true);
+			} else if(json_is_boolean(value)) {
+				if(json_is_true(value))
+					asprintf(&payload, "true");
+				else
+					asprintf(&payload, "false");
+					
+			} else {
+				asprintf(&payload, "%s", json_string_value(value));
 			}
+			mosquitto_publish(mosq, NULL, topic, strlen(payload), payload, 0, true);
 			DBG("%s -> %s\n", topic, payload);
 			free(payload);
 			free(topic);
@@ -120,11 +129,6 @@ int main( int argc, char* argv[] ) {
 
 	if(cfg.port.name == NULL) {
 		printf("You must specify the serial port\n");
-		exit(2);
-	}
-
-	if(cfg.device == NULL) {
-		printf("You must specify the device name\n");
 		exit(2);
 	}
 
@@ -183,9 +187,9 @@ int main( int argc, char* argv[] ) {
 			if (FD_ISSET (i, &read_fd_set)) {
 				if(i == arduino_fd) {
 					if(!readSerial(arduino_fd, buf, BUF_MAX, cfg.port.timeout)) {
-						DBG("Read %d bytes\n", strlen(buf));
-						arduinoEvent(buf, &last, &cfg, mosq);
+//						DBG("Read %d bytes\n", strlen(buf));
 						serialport_flush(arduino_fd);
+						arduinoEvent(buf, &last, &cfg, mosq);
 					}
 				} else if(i == mosq_fd) {
 					mosquitto_loop_read(mosq, 1);

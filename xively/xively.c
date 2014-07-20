@@ -234,7 +234,7 @@ int main(int argc, char *argv[]) {
 		ERR("Unable to connect.");
 		return(EXIT_FAILURE);
 	}
-	configure(mosq, &data, "xively.cfg");
+	configure(mosq, &data, "/etc/melga/xively.cfg");
 
 	/* do anything besides waiting for new values to publish, so lets loop_forever */
 	mosquitto_loop_forever(mosq, 5000, 1);

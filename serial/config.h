@@ -20,7 +20,6 @@ typedef struct {
 		int keepalive;
 	} remote;
 	char *conffile;
-	char *device;
 } config_t;
 
 int loadDefaults(config_t *c);

@@ -5,18 +5,19 @@ int parseArgs(int argc, char *argv[], config_t *c) {
 
 	/* options descriptor */
 	const struct option longopts[] = {
-		{ "device",      required_argument,            0,           1 },
+		{ "conf",      required_argument,            0,           1 },
 		{ "port",      required_argument,            0,           1 },
 		{ "port-speed",   required_argument,      0,           1 },
 		{ "server",  required_argument,           0,     1 },
 		{ "server-port",  required_argument,      0,     1 },
 		{ NULL,         0,                      NULL,           0 }
 	};
-	const char *usage = "usage: %s --device custom_name --port devname [--port-speed 115200] [--server localhost] [--server-port 1883]\n";
+	const char *usage = "usage: %s --conf configuration-file --port devname [--port-speed 115200] [--server localhost] [--server-port 1883]\n";
 
 	int option_index = 0;
 
 	while ((ch = getopt_long(argc, argv, "d", longopts, &option_index)) != -1) {
+		fprintf(stderr, "ch = %d	option_index = %d	optarg = %s\n", ch, option_index, optarg);
 		switch (ch) {
 			case 'd':
 				DBG("Debug ON\n");
@@ -24,9 +25,7 @@ int parseArgs(int argc, char *argv[], config_t *c) {
 			case 1:
 				switch(option_index) {
 					case 0:
-						c->device = strdup(optarg);
-						asprintf(&c->conffile, "%s.cfg", optarg);
-						DBG("DEV parse %s\n", c->conffile);		
+						c->conffile = strdup(optarg);
 						break;
 					case 1:
 						c->port.name = strdup(optarg);
@@ -48,6 +47,10 @@ int parseArgs(int argc, char *argv[], config_t *c) {
 				return 1;
 		}
 	}
+	if( c->conffile == NULL) {
+		fprintf(stdout,usage, argv[0]);
+		return 1;
+	}
 	return 0;
 }
 
@@ -57,15 +60,15 @@ int loadDefaults(config_t *c) {
 	c->remote.servername = strdup("localhost");
 	c->remote.port = 1883;
 	c->remote.keepalive = 1800; //seconds
-	c->device = NULL;
 	c->port.name = NULL;
+	c->conffile = NULL;
 	return 0;
 }
 
 char *dumpConfig(config_t *c) {
 	//TODO dump config_t to a json string
 	char *dump;
-	asprintf(&dump, "{ \"device\": \"%s\", \"port\": {\"name\": \"%s\", \"speed\": %d, \"timeout\": %d}, \"remote\": {\"servername\": \"%s\", \"port\": %d, \"keepalive\": %d } }", c->device, c->port.name, c->port.speed, c->port.timeout, c->remote.servername, c->remote.port, c->remote.keepalive);
+	asprintf(&dump, "{ \"port\": {\"name\": \"%s\", \"speed\": %d, \"timeout\": %d}, \"remote\": {\"servername\": \"%s\", \"port\": %d, \"keepalive\": %d } }", c->port.name, c->port.speed, c->port.timeout, c->remote.servername, c->remote.port, c->remote.keepalive);
 
 	return dump;
 }
