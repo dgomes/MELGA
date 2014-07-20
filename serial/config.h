@@ -2,6 +2,8 @@
 #define _CONFIG_H_
 
 #include <getopt.h>
+#include <stdio.h>
+
 #include <jansson.h>
 #include <string.h>
 #include <utils.h>
@@ -18,7 +20,6 @@ typedef struct {
 		int keepalive;
 	} remote;
 	char *conffile;
-	char *device;
 } config_t;
 
 int loadDefaults(config_t *c);
