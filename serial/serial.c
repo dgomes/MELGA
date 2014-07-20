@@ -47,34 +47,34 @@ int arduinoEvent(char *buf, last_update_t *last, config_t *cfg, struct mosquitto
 	};
 	if(strlen(buf)>0) {
 		DBG("push to server\n");
-	    json_error_t error;
-        json_t *root = json_loads(buf, 0, &error);
+		json_error_t error;
+		json_t *root = json_loads(buf, 0, &error);
 
 		const char *key;
-        json_t *value;
-        void *iter = json_object_iter(root);
-        while(iter) {
-                key = json_object_iter_key(iter);
-                value = json_object_iter_value(iter);
-                /* use key and value ... */
-				char *topic = NULL;
-				char *payload = NULL;
-				asprintf(&topic, "%s/%s", cfg->device, key);
-                if(json_is_integer(value)) {
-						asprintf(&payload, "%lld", json_integer_value(value));
-						mosquitto_publish(mosq, NULL, topic, strlen(payload), payload, 0, true);
-				}
-                else if(json_is_real(value)) {
-						asprintf(&payload, "%f", json_real_value(value));
-						mosquitto_publish(mosq, NULL, topic, strlen(payload), payload, 0, true);
-				}
-                else
-                        return 2;
+		json_t *value;
+		void *iter = json_object_iter(root);
+		while(iter) {
+			key = json_object_iter_key(iter);
+			value = json_object_iter_value(iter);
+			/* use key and value ... */
+			char *topic = NULL;
+			char *payload = NULL;
+			asprintf(&topic, "%s/%s", cfg->device, key);
+			if(json_is_integer(value)) {
+				asprintf(&payload, "%lld", json_integer_value(value));
+				mosquitto_publish(mosq, NULL, topic, strlen(payload), payload, 0, true);
+			}
+			else if(json_is_real(value)) {
+				asprintf(&payload, "%f", json_real_value(value));
+				mosquitto_publish(mosq, NULL, topic, strlen(payload), payload, 0, true);
+			}
+			else
+				return 2;
 
-				free(payload);
-				free(topic);
-                iter = json_object_iter_next(root, iter);
-        }
+			free(payload);
+			free(topic);
+			iter = json_object_iter_next(root, iter);
+		}
 
 
 	};
@@ -83,10 +83,10 @@ int arduinoEvent(char *buf, last_update_t *last, config_t *cfg, struct mosquitto
 }
 
 void log_callback(struct mosquitto *mosq, void *userdata, int level, const char *str) {
-    /* Pring all log messages regardless of level. */
-    #ifdef DEBUG_MQTT
-    DBG("[MQTT LOG] %s\n", str);
-    #endif
+	/* Pring all log messages regardless of level. */
+#ifdef DEBUG_MQTT
+	DBG("[MQTT LOG] %s\n", str);
+#endif
 }
 
 int main( int argc, char* argv[] ) {
@@ -127,7 +127,7 @@ int main( int argc, char* argv[] ) {
 		exit(2);
 	}
 
-    mosquitto_lib_init();
+	mosquitto_lib_init();
 
 	mosq = mosquitto_new(cfg.port.name, true, NULL); //use port name as client id
 	if(!mosq) {
@@ -136,13 +136,13 @@ int main( int argc, char* argv[] ) {
 	}
 
 	//TODO setup callbacks
-    mosquitto_log_callback_set(mosq, log_callback);
+	mosquitto_log_callback_set(mosq, log_callback);
 
 
 	if(mosquitto_connect(mosq, cfg.remote.servername, cfg.remote.port, cfg.remote.keepalive)){
-        printf("Unable to connect to %s:%d.\n", cfg.remote.servername, cfg.remote.port);
-        exit(3);
-    }
+		printf("Unable to connect to %s:%d.\n", cfg.remote.servername, cfg.remote.port);
+		exit(3);
+	}
 
 	int mosq_fd = mosquitto_socket(mosq);
 
@@ -180,7 +180,7 @@ int main( int argc, char* argv[] ) {
 						arduinoEvent(buf, &last, &cfg, mosq);
 						serialport_flush(arduino_fd);
 					}
-				} else if(i == arduino_fd) {
+				} else if(i == mosq_fd) {
 					mosquitto_loop_read(mosq, 1);
 					mosquitto_loop_write(mosq, 1);
 					mosquitto_loop_misc(mosq);
@@ -209,7 +209,7 @@ int main( int argc, char* argv[] ) {
 
 	/* Cleanup */
 	mosquitto_destroy(mosq);
-    mosquitto_lib_cleanup();
+	mosquitto_lib_cleanup();
 
 	//TODO clean cfg
 
