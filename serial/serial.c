@@ -18,7 +18,7 @@
 
 int setupSerial(const char *port, int baudrate) {
 	int fd = -1;
-
+	DBG("%s\n", port);
 	fd = serialport_init(port, baudrate);
 	if( fd==-1 ) {
 		fprintf(stderr,"couldn't open port %s @ %d bauds\n", port, baudrate);
@@ -114,7 +114,8 @@ int main( int argc, char* argv[] ) {
 	port_t serial;
 	loadSerial(&cfg, &serial);
 
-	if(serial.name == NULL) {
+	DBG("damm\n");
+	if(!strlen(serial.name)) {
 		printf("You must specify the serial port\n");
 		exit(2);
 	}

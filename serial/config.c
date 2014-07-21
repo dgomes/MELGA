@@ -22,7 +22,7 @@ int parseArgs(int argc, char *argv[], config_t *c) {
 	config_setting_t *serial = config_setting_get_member(root, "serial");
 	config_setting_t *mqtt = config_setting_get_member(root, "mqtt");
 
-	while ((ch = getopt_long(argc, argv, "d", longopts, &option_index)) != -1) {
+	while ((ch = getopt_long(argc, argv, "dp", longopts, &option_index)) != -1) {
 		fprintf(stderr, "ch = %d	option_index = %d	optarg = %s\n", ch, option_index, optarg);
 		switch (ch) {
 			case 'd':
@@ -127,12 +127,14 @@ int loadSerial(config_t *c, port_t *port) {
 	config_setting_t *root = config_root_setting(c);
 	config_setting_t *serial = config_setting_get_member(root, "serial");
 
-	if(!(config_setting_lookup_string(serial, "name", &port->name)
+	port->name = NULL;
+	if(!(config_setting_lookup_string(serial, "devname", &port->name)
                 && config_setting_lookup_int(serial, "speed", &port->speed)
                 && config_setting_lookup_int(serial, "timeout", &port->timeout)
             ))
 		return 1;
 
+	DBG("loadSerial\n");
 	return 0;
 }
 int loadMQTT(config_t *c, mqttserver_t *mqtt) {
