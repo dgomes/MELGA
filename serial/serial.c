@@ -16,7 +16,7 @@
 #include "utils.h"
 #include "config.h"
 
-int setupSerial(char *port, int baudrate) {
+int setupSerial(const char *port, int baudrate) {
 	int fd = -1;
 
 	fd = serialport_init(port, baudrate);
@@ -50,7 +50,7 @@ int arduinoEvent(char *buf, last_update_t *last, config_t *cfg, struct mosquitto
 		void *id = json_object_iter_at(root, "id");
 		if(id == NULL)
 			return 1;
-		json_t *json_device = json_object_iter_value(id); 
+		json_t *json_device = json_object_iter_value(id);
 		const char *device = json_string_value(json_device);
 
 		const char *key;
@@ -72,7 +72,7 @@ int arduinoEvent(char *buf, last_update_t *last, config_t *cfg, struct mosquitto
 					asprintf(&payload, "true");
 				else
 					asprintf(&payload, "false");
-					
+
 			} else {
 				asprintf(&payload, "%s", json_string_value(value));
 			}
@@ -100,47 +100,36 @@ int main( int argc, char* argv[] ) {
 	config_t cfg;
 	struct mosquitto *mosq = NULL;
 
+	config_init(&cfg);
 	loadDefaults(&cfg);
 
-	char *dump = NULL;
-	DBG("%s: %s\n", __FILE__, dump = dumpConfig(&cfg));
-	free(dump);
+	config_write(&cfg, stderr);
 
 	if(parseArgs(argc, argv, &cfg)) {
 		exit(1);
 	}
 
-	DBG("%s: %s\n", __FILE__, dump = dumpConfig(&cfg));
-	free(dump);
+	config_write(&cfg, stderr);
 
-	if(cfg.conffile != NULL) {
-		if(readConfig(cfg.conffile, &cfg)) {
-			// no configuration file supplied
-			FILE *fp = fopen(cfg.conffile, "w");
-			char *cur_config = dumpConfig(&cfg);
-			fwrite(cur_config, sizeof(char), strlen(cur_config), fp);
-			fclose(fp);
-			free(cur_config);
-			exit(1);
-		}
-	}
-	DBG("%s: %s\n", __FILE__, dump = dumpConfig(&cfg));
-	free(dump);
+	port_t serial;
+	loadSerial(&cfg, &serial);
 
-	if(cfg.port.name == NULL) {
+	if(serial.name == NULL) {
 		printf("You must specify the serial port\n");
 		exit(2);
 	}
 
-	int arduino_fd = setupSerial(cfg.port.name, cfg.port.speed);
+	int arduino_fd = setupSerial(serial.name, serial.speed);
 	if(arduino_fd < 0) {
-		printf("Failed to setup serial port %s @ %d\n", cfg.port.name, cfg.port.speed);
+		printf("Failed to setup serial port %s @ %d\n", serial.name, serial.speed);
 		exit(2);
 	}
 
 	mosquitto_lib_init();
+	mqttserver_t mqtt;
+	loadMQTT(&cfg, &mqtt);
 
-	mosq = mosquitto_new(cfg.port.name, true, NULL); //use port name as client id
+	mosq = mosquitto_new(serial.name, true, NULL); //use port name as client id
 	if(!mosq) {
 		printf("Couldn't create a new mosquitto client instance\n");
 		exit(3);
@@ -150,8 +139,8 @@ int main( int argc, char* argv[] ) {
 	mosquitto_log_callback_set(mosq, log_callback);
 
 
-	if(mosquitto_connect(mosq, cfg.remote.servername, cfg.remote.port, cfg.remote.keepalive)){
-		printf("Unable to connect to %s:%d.\n", cfg.remote.servername, cfg.remote.port);
+	if(mosquitto_connect(mosq, mqtt.servername, mqtt.port, mqtt.keepalive)){
+		printf("Unable to connect to %s:%d.\n", mqtt.servername, mqtt.port);
 		exit(3);
 	}
 
@@ -186,7 +175,7 @@ int main( int argc, char* argv[] ) {
 		for (i = 0; i < FD_SETSIZE; ++i)
 			if (FD_ISSET (i, &read_fd_set)) {
 				if(i == arduino_fd) {
-					if(!readSerial(arduino_fd, buf, BUF_MAX, cfg.port.timeout)) {
+					if(!readSerial(arduino_fd, buf, BUF_MAX, serial.timeout)) {
 //						DBG("Read %d bytes\n", strlen(buf));
 						serialport_flush(arduino_fd);
 						arduinoEvent(buf, &last, &cfg, mosq);

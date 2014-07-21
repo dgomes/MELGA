@@ -8,7 +8,7 @@
 #include "utils.h"
 
 #define BUF_MAX  512
-int setupSerial(char *port, int baudrate);
+int setupSerial(const char *port, int baudrate);
 int readSerial(int fd, char *buf, int buf_max, int timeout);
 
 typedef struct {

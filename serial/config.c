@@ -2,6 +2,7 @@
 
 int parseArgs(int argc, char *argv[], config_t *c) {
 	int ch;
+	char *conffile = NULL;
 
 	/* options descriptor */
 	const struct option longopts[] = {
@@ -9,12 +10,17 @@ int parseArgs(int argc, char *argv[], config_t *c) {
 		{ "port",      required_argument,            0,           1 },
 		{ "port-speed",   required_argument,      0,           1 },
 		{ "server",  required_argument,           0,     1 },
-		{ "server-port",  required_argument,      0,     1 },
+		{ "server_port",  required_argument,      0,     1 },
 		{ NULL,         0,                      NULL,           0 }
 	};
-	const char *usage = "usage: %s --conf configuration-file --port devname [--port-speed 115200] [--server localhost] [--server-port 1883]\n";
+	const char *usage = "usage: %s --conf configuration-file --port devname [--port-speed 115200] [--server localhost] [--server_port 1883]\n";
 
 	int option_index = 0;
+
+	config_setting_t *setting;
+	config_setting_t *root = config_root_setting(c);
+	config_setting_t *serial = config_setting_get_member(root, "serial");
+	config_setting_t *mqtt = config_setting_get_member(root, "mqtt");
 
 	while ((ch = getopt_long(argc, argv, "d", longopts, &option_index)) != -1) {
 		fprintf(stderr, "ch = %d	option_index = %d	optarg = %s\n", ch, option_index, optarg);
@@ -22,22 +28,37 @@ int parseArgs(int argc, char *argv[], config_t *c) {
 			case 'd':
 				DBG("Debug ON\n");
 				break;
+			case 'p':
+				DBG("Persist to file\n");
+				if(conffile)
+					config_write_file(c, conffile);
+				break;
 			case 1:
 				switch(option_index) {
 					case 0:
-						c->conffile = strdup(optarg);
+						DBG("Reading from %s\n", optarg);
+						config_read_file(c, optarg);
+						conffile = strdup(optarg);
 						break;
 					case 1:
-						c->port.name = strdup(optarg);
+						setting = config_setting_get_member(serial, "port");
+						if(setting != NULL)
+							config_setting_set_int(setting, atoi(optarg));
 						break;
 					case 2:
-						c->port.speed = atoi(optarg);
+						setting = config_setting_get_member(serial, "port-speed");
+						if(setting != NULL)
+							config_setting_set_int(setting, atoi(optarg));
 						break;
 					case 3:
-						c->remote.servername = strdup(optarg);
+						setting = config_setting_get_member(mqtt, "server");
+						if(setting != NULL)
+							config_setting_set_string(setting, optarg);
 						break;
 					case 4:
-						c->remote.port = atoi(optarg);
+						setting = config_setting_get_member(mqtt, "server_port");
+						if(setting != NULL)
+							config_setting_set_int(setting, atoi(optarg));
 						break;
 				}
 				break;
@@ -47,7 +68,7 @@ int parseArgs(int argc, char *argv[], config_t *c) {
 				return 1;
 		}
 	}
-	if( c->conffile == NULL) {
+	if(conffile == NULL) {
 		fprintf(stdout,usage, argv[0]);
 		return 1;
 	}
@@ -55,73 +76,74 @@ int parseArgs(int argc, char *argv[], config_t *c) {
 }
 
 int loadDefaults(config_t *c) {
-	c->port.speed = 115200;
-	c->port.timeout = 5000;
-	c->remote.servername = strdup("localhost");
-	c->remote.port = 1883;
-	c->remote.keepalive = 1800; //seconds
-	c->port.name = NULL;
-	c->conffile = NULL;
+	config_setting_t *root = config_root_setting(c);
+
+	// Serial
+	config_setting_t *serial = config_setting_get_member(root, "serial");
+	if(serial == NULL)
+		serial = config_setting_add(root, "serial", CONFIG_TYPE_GROUP);
+
+	config_setting_t *devname = config_setting_get_member(serial, "devname");
+	if(devname == NULL) {
+		devname = config_setting_add(serial, "devname", CONFIG_TYPE_STRING);
+	}
+	config_setting_t *speed = config_setting_get_member(serial, "speed");
+	if(speed == NULL) {
+		speed = config_setting_add(serial, "speed", CONFIG_TYPE_INT);
+		config_setting_set_int(speed, 115200);
+	}
+	config_setting_t *timeout = config_setting_get_member(serial, "timeout");
+	if(timeout == NULL) {
+		timeout = config_setting_add(serial, "timeout", CONFIG_TYPE_INT);
+		config_setting_set_int(timeout, 30000);
+	}
+
+
+	// MQTT
+	config_setting_t *mqtt = config_setting_get_member(root, "mqtt");
+	if(mqtt == NULL)
+		mqtt = config_setting_add(root, "mqtt", CONFIG_TYPE_GROUP);
+
+	config_setting_t *server = config_setting_get_member(mqtt, "server");
+	if(server == NULL) {
+		server = config_setting_add(mqtt, "server", CONFIG_TYPE_STRING);
+		config_setting_set_string(server, "localhost");
+	}
+	config_setting_t *server_port = config_setting_get_member(mqtt, "server_port");
+	if(server_port == NULL) {
+		server_port = config_setting_add(mqtt, "server_port", CONFIG_TYPE_INT);
+		config_setting_set_int(server_port, 1883);
+	}
+	config_setting_t *server_keep_alive = config_setting_get_member(mqtt, "keep_alive");
+	if(server_keep_alive == NULL) {
+		server_keep_alive = config_setting_add(mqtt, "keep_alive", CONFIG_TYPE_INT);
+		config_setting_set_int(server_keep_alive, 1800);
+	}
+
 	return 0;
 }
 
-char *dumpConfig(config_t *c) {
-	//TODO dump config_t to a json string
-	char *dump;
-	asprintf(&dump, "{ \"port\": {\"name\": \"%s\", \"speed\": %d, \"timeout\": %d}, \"remote\": {\"servername\": \"%s\", \"port\": %d, \"keepalive\": %d } }", c->port.name, c->port.speed, c->port.timeout, c->remote.servername, c->remote.port, c->remote.keepalive);
+int loadSerial(config_t *c, port_t *port) {
+	config_setting_t *root = config_root_setting(c);
+	config_setting_t *serial = config_setting_get_member(root, "serial");
 
-	return dump;
+	if(!(config_setting_lookup_string(serial, "name", &port->name)
+                && config_setting_lookup_int(serial, "speed", &port->speed)
+                && config_setting_lookup_int(serial, "timeout", &port->timeout)
+            ))
+		return 1;
+
+	return 0;
 }
+int loadMQTT(config_t *c, mqttserver_t *mqtt) {
+	config_setting_t *root = config_root_setting(c);
+	config_setting_t *serial = config_setting_get_member(root, "mqtt");
 
-int readConfig(const char *filename, config_t *c) {
-	if(!strlen(filename)) return -1;
-
-	json_error_t error;
-	json_t *root = json_load_file(filename, 0, &error);
-
-	if(!root) {
-		fprintf(stderr, "error: on line %d: %s\n", error.line, error.text);
+	if(!(config_setting_lookup_string(serial, "server", &mqtt->servername)
+                && config_setting_lookup_int(serial, "server_port", &mqtt->port)
+                && config_setting_lookup_int(serial, "keep_alive", &mqtt->keepalive)
+            ))
 		return 1;
-	}
-
-	/* Port Configuration */
-	json_t *port = json_object_get(root, "port");
-	if(!json_is_object(port)) {
-		fprintf(stderr, "error: port is not an object\n");
-		return 1;
-	}
-
-	json_t *name = json_object_get(port, "name");
-	if(!json_is_string(name)) {
-		fprintf(stderr, "error: port name missing\n");
-		return 1;
-	}
-	asprintf(&c->port.name, "%s", json_string_value(name));
-	json_t *speed = json_object_get(port, "speed");
-	if(!json_is_integer(speed)) {
-		fprintf(stderr, "error: port speed missing\n");
-		return 1;
-	}
-	c->port.speed = json_integer_value(speed);
-	json_t *timeout = json_object_get(port, "timeout");
-	if(!json_is_integer(timeout)) {
-		fprintf(stderr, "error: port timeout missing\n");
-		return 1;
-	}
-	c->port.timeout = json_integer_value(timeout);
-
-	/* Remote Configuration */
-	json_t *remote = json_object_get(root, "remote");
-	if(!json_is_object(remote)) {
-		fprintf(stderr, "error: remote is not an object\n");
-		return 1;
-	}
-	json_t *remote_port = json_object_get(remote, "port");
-	if(!json_is_integer(remote_port)) {
-		fprintf(stderr, "error: remote port missing\n");
-		return 1;
-	}
-	c->remote.port = json_integer_value(remote_port);
 
 	return 0;
 }
