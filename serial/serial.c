@@ -96,6 +96,13 @@ void log_callback(struct mosquitto *mosq, void *userdata, int level, const char 
 #endif
 }
 
+void message_callback(struct mosquitto *mosq, void *userdata, const struct mosquitto_message *message) {
+	DBG("%s -> %s\n", message->topic, message->payload);
+
+	//serialport_write(arduino_fd, buf);
+
+}
+
 int main( int argc, char* argv[] ) {
 	config_t cfg;
 	struct mosquitto *mosq = NULL;
@@ -114,7 +121,6 @@ int main( int argc, char* argv[] ) {
 	port_t serial;
 	loadSerial(&cfg, &serial);
 
-	DBG("damm\n");
 	if(!strlen(serial.name)) {
 		printf("You must specify the serial port\n");
 		exit(2);
@@ -130,7 +136,11 @@ int main( int argc, char* argv[] ) {
 	mqttserver_t mqtt;
 	loadMQTT(&cfg, &mqtt);
 
-	mosq = mosquitto_new(serial.name, true, NULL); //use port name as client id
+	char hostname[BUF_MAX];
+	gethostname(hostname, BUF_MAX);
+	char *client_id;
+	asprintf(&client_id, "%s.%s", hostname, serial.name);
+	mosq = mosquitto_new(client_id, true, NULL); //use port name as client id
 	if(!mosq) {
 		printf("Couldn't create a new mosquitto client instance\n");
 		exit(3);
@@ -138,12 +148,18 @@ int main( int argc, char* argv[] ) {
 
 	//TODO setup callbacks
 	mosquitto_log_callback_set(mosq, log_callback);
-
+    mosquitto_message_callback_set(mosq, message_callback);
 
 	if(mosquitto_connect(mosq, mqtt.servername, mqtt.port, mqtt.keepalive)){
 		printf("Unable to connect to %s:%d.\n", mqtt.servername, mqtt.port);
 		exit(3);
 	}
+
+	//Subscribe command
+	char *sub;
+	asprintf(&sub, "%s/cmd", client_id);
+	int r = mosquitto_subscribe(mosq, NULL, sub, 2);
+	DBG("Subscribe %s = %d\n", sub, r);
 
 	int mosq_fd = mosquitto_socket(mosq);
 
@@ -211,8 +227,6 @@ int main( int argc, char* argv[] ) {
 	/* Cleanup */
 	mosquitto_destroy(mosq);
 	mosquitto_lib_cleanup();
-
-	//TODO clean cfg
 
 	return EXIT_SUCCESS;
 }
