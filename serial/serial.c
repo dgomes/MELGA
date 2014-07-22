@@ -114,7 +114,6 @@ int main( int argc, char* argv[] ) {
 	port_t serial;
 	loadSerial(&cfg, &serial);
 
-	DBG("damm\n");
 	if(!strlen(serial.name)) {
 		printf("You must specify the serial port\n");
 		exit(2);
