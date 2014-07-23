@@ -1,5 +1,18 @@
 #include <utils.h>
 
+char* strlaststr(const char* haystack, const char* needle) {
+   char*  loc = 0;
+   char*  found = 0;
+   size_t pos = 0;
+
+   while ((found = strstr(haystack + pos, needle)) != 0) {
+      loc = found;
+      pos = (found - haystack) + 1;
+   }
+
+   return loc;
+}
+
 void daemonize() {
 	#ifndef DEBUG
 	/* Our process ID and Session ID */

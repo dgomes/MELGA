@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <syslog.h>
+#include <string.h>
 
 #ifndef DEBUG
 #include <sys/types.h>
@@ -28,4 +29,5 @@
             syslog(LOG_INFO, ##__VA_ARGS__);
 #endif
 
+char* strlastsrt(const char *haystack, const char* needle);
 void daemonize();
