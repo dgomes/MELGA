@@ -49,6 +49,7 @@ void configure(struct mosquitto *mosq, data_t *data, const char *conf_filename) 
 
 	config_init(&cfg);
 
+	DBG("Read configuration file %s\n", conf_filename);
 	/* Read the file. If there is an error, report it and exit. */
 	if(!config_read_file(&cfg, conf_filename))
 	{
@@ -86,8 +87,8 @@ void configure(struct mosquitto *mosq, data_t *data, const char *conf_filename) 
 				config_setting_t *channel = config_setting_get_elem(channels, j);
 				char *datastream = strdup(config_setting_get_string(channel));
 
-				char *sub = (char *) malloc(strlen(data->feeds[feed_i]->topic) + 1 + strlen(datastream)+1);
-				sprintf(sub, "%s/%s", data->feeds[feed_i]->topic, datastream);
+				char *sub;
+				asprintf(&sub, "%s/%s", data->feeds[feed_i]->topic, datastream);
 				int r = mosquitto_subscribe(mosq, NULL, sub, 2);
 				DBG("Subscribe %s = %d\n", sub, r);
 				free(sub);
@@ -181,6 +182,14 @@ void message_callback(struct mosquitto *mosq, void *userdata, const struct mosqu
 	}
 }
 
+void disconnect_callback(struct mosquitto *mosq, void *userdata, int result) {
+	if(!result){
+		NOTICE("Disconnected from MQTT Broker");
+	}else{
+		ERR("Failed to disconnect from broker");
+	}
+}
+
 void connect_callback(struct mosquitto *mosq, void *userdata, int result) {
 	if(!result){
 		NOTICE("Connected to MQTT Broker");
@@ -227,6 +236,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	mosquitto_connect_callback_set(mosq, connect_callback);
+	mosquitto_disconnect_callback_set(mosq, disconnect_callback);
 	mosquitto_message_callback_set(mosq, message_callback);
 	mosquitto_log_callback_set(mosq, log_callback);
 
@@ -234,7 +244,7 @@ int main(int argc, char *argv[]) {
 		ERR("Unable to connect.");
 		return(EXIT_FAILURE);
 	}
-	configure(mosq, &data, "/etc/melga/xively.cfg");
+	configure(mosq, &data, "xively.cfg");
 
 	/* do anything besides waiting for new values to publish, so lets loop_forever */
 	mosquitto_loop_forever(mosq, 5000, 1);
