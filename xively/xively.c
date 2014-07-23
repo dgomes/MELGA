@@ -145,6 +145,7 @@ void message_callback(struct mosquitto *mosq, void *userdata, const struct mosqu
 		}
 	}
 	/*Have we received updates on all datastreams? */
+	DBG("updated = %d == feeds[feed_i]->f.datastream_count = %d\n", updated, feeds[feed_i]->f.datastream_count);
 	if(updated == feeds[feed_i]->f.datastream_count) {
 		DBG("SEND TO XIVELY!\n");
 
@@ -234,7 +235,7 @@ int main(int argc, char *argv[]) {
 		ERR("Unable to connect.");
 		return(EXIT_FAILURE);
 	}
-	configure(mosq, &data, "/etc/melga/xively.cfg");
+	configure(mosq, &data, "xively.cfg");
 
 	/* do anything besides waiting for new values to publish, so lets loop_forever */
 	mosquitto_loop_forever(mosq, 5000, 1);
