@@ -187,13 +187,14 @@ void disconnect_callback(struct mosquitto *mosq, void *userdata, int result) {
 	if(!result){
 		NOTICE("Disconnected from MQTT Broker");
 	}else{
-		ERR("Failed to disconnect from broker");
+		ERR("Unexpectably disconnected from broker");
 	}
 }
 
 void connect_callback(struct mosquitto *mosq, void *userdata, int result) {
 	if(!result){
 		NOTICE("Connected to MQTT Broker");
+		configure(mosq, userdata, "xively.cfg");
 	}else{
 		ERR("Connection to broker failed");
 	}
@@ -245,10 +246,11 @@ int main(int argc, char *argv[]) {
 		ERR("Unable to connect.");
 		return(EXIT_FAILURE);
 	}
-	configure(mosq, &data, "xively.cfg");
 
 	/* do anything besides waiting for new values to publish, so lets loop_forever */
-	mosquitto_loop_forever(mosq, 5000, 1);
+	int r = mosquitto_loop_forever(mosq, -1, 1);
+	DBG("loop_forever exited\n");
+	DBG("%s\n", strerror(r));
 
 	/* Cleanup */
 	mosquitto_destroy(mosq);
