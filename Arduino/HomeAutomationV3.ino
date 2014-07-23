@@ -14,8 +14,8 @@
 #include <RemoteTransmitter.h> //https://bitbucket.org/fuzzillogic/433mhzforarduino
 
 #define DEBUG
-#define RF_RECEIVER_PIN 3
-#define RF_TRANSMITTER_PIN 5
+#define RF_RECEIVER_PIN 2 // pin 3 on the Uno
+#define RF_TRANSMITTER_PIN 9  //pin 5 on the Uno 
 #define LM35sensorPin 0  //A0
 #define RF_PERIOD 480 //usecs (as detected for Chacon Ref:54656 using a 434mhz receiver and fuzzillogic example code)
 #define WEATHER_PERIOD 30000
@@ -27,16 +27,19 @@ Adafruit_BMP085 bmp;
 boolean bmp_present;
 unsigned long time;
 
+#ifdef GREENHOUSE
 struct GHDataPacket p;
 volatile boolean interrupt_flag = false;
 // Set up nRF24L01 radio on SPI bus plus pins 9 & 10
 RF24 radio(9,10);
 // Radio pipe addresses for the 2 nodes to communicate.
 const uint64_t pipes[2] = { 0xF0F0F0F0E1LL, 0xF0F0F0F0D2LL };
+#endif
 
 String cmd = "";         // a string to hold incoming data
 volatile boolean command_flag = false;
 
+#ifdef GREENHOUSE
 void check_radio(void)
 {
   // What happened?
@@ -53,6 +56,7 @@ void check_radio(void)
     Serial.print("{\"id\": \"weather\", \"code\": 400}");
   }
 }
+#endif
 
 void setup()
 {
@@ -75,6 +79,7 @@ void setup()
   gw.registerPlugin(72, weather::detectPacket);
   gw.registerPlugin(48, door::detectPacket);
  
+#ifdef GREENHOUSE
   //
   // Setup and configure rf radio
   //
@@ -96,6 +101,7 @@ void setup()
   radio.printDetails();
   Serial.println("\"}");
   attachInterrupt(0, check_radio, FALLING);
+#endif
 
 }
 
@@ -173,6 +179,7 @@ void loop()
     }
   }
 
+#ifdef GREENHOUSE
   // Greenhouse
   if(interrupt_flag) {
     // print the current readings, in JSON format:
@@ -203,6 +210,7 @@ void loop()
     interrupt_flag = false;
 
   }
+#endif
 
   if(command_flag) {
     command_flag = false;
@@ -216,7 +224,9 @@ void loop()
       case 'R':
         cmd.substring(1).toCharArray(cmd_c, cmd.length());
         code = strtol(cmd_c, (char **)0, 16);
+        Serial.print("{\"id\": \transmitter\", \"code\": 200, \"message\": \"");
         Serial.println(code, HEX);
+        Serial.println("\" }");
         // Retransmit the signal 8 times ( == 2^3) on pin RF_TRANSMITTER. Note: no object was created!
         for(int i=0; i<3; i++) {
           RemoteTransmitter::sendCode(RF_TRANSMITTER_PIN, code, RF_PERIOD, 3);
