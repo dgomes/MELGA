@@ -215,7 +215,7 @@ void loop()
   if(command_flag) {
     command_flag = false;
 
-    Serial.println(cmd[0]);
+    //Serial.println(cmd[0]);
     char cmd_c[cmd.length()];
     long int code;
     char C = cmd[0];
@@ -224,8 +224,8 @@ void loop()
       case 'R':
         cmd.substring(1).toCharArray(cmd_c, cmd.length());
         code = strtol(cmd_c, (char **)0, 16);
-        Serial.print("{\"id\": \transmitter\", \"code\": 200, \"message\": \"");
-        Serial.println(code, HEX);
+        Serial.print("{\"id\": \"transmitter\", \"code\": 200, \"message\": \"0x");
+        Serial.print(code, HEX);
         Serial.println("\" }");
         // Retransmit the signal 8 times ( == 2^3) on pin RF_TRANSMITTER. Note: no object was created!
         for(int i=0; i<3; i++) {
