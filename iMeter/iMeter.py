@@ -8,9 +8,11 @@ from BeautifulSoup import BeautifulSoup
 
 #Customize here
 url = 'http://192.168.1.79/listdev.htm'
+broker = 'localhost'
+port = 1883
 
 #DON'T EDIT BELOW!!!
-waitingFor = []
+published = False
 
 def parseWebpage():
 
@@ -37,57 +39,46 @@ def parseWebpage():
 def on_connect(mqttc, obj, rc):
 	logging.info("Connected")
 
-	r, mid = mqttc.subscribe("imeter/energy")
-	waitingFor.append(mid)
-
-def on_subscribe(mqttc, userdata, mid, granted_qos):
-	logging.debug("on_subscribe " + str(mid) + " in " + str(waitingFor))
-
-	if mid in waitingFor:
-		waitingFor.remove(mid)
+	mqttc.subscribe("imeter/energy")
 
 def on_message(mqttc, userdata, msg):
-	logging.debug(msg.topic + " -> " + msg.payload)
+	global published
+	logging.debug("on_message: " + msg.topic + " -> " + msg.payload)
 
 	userdata['energySpent'] = int(userdata['energy']) - int(msg.payload)
+	
+	if published:
+		mqttc.disconnect()
+	else:
+		publish(mqttc, "imeter", userdata)
+		published = True
 
 def publish(mqttc, topic, data):
 	logging.info("Publish data")
 	for key in data.keys():
 		r, mid = mqttc.publish(topic + "/" + key, data[key], retain=True)
+		logging.debug(topic+"/"+ str(key) + " -> " + str(data[key]))
 		if r != mosquitto.MOSQ_ERR_SUCCESS:
 			logging.error("ERROR on publish")
-		else:
-			waitingFor.append(mid)
-
-def on_publish(mqttc, obj, mid):
-	logging.debug("on_publish " + str(mid) + " in " + str(waitingFor))
-	if mid in waitingFor:
-		waitingFor.remove(mid)
 
 def on_log(mqttc, obj, level, string):
-	logging.debug(string)
+	pass
+#	logging.debug(string)
 
 def main():
 	logging.basicConfig(format='[%(asctime)s] %(levelname)s - %(message)s', datefmt='%d/%m/%Y %I:%M:%S %p', level=logging.DEBUG)
-	logging.info("iMeter - v1")
+	logging.info("iMeter - v2")
 
 	#get data
 	data = parseWebpage()
 
 	mqttc = mosquitto.Mosquitto("iMeter", True, data)
+	mqttc.on_log = on_log
 	mqttc.on_message = on_message
 	mqttc.on_connect = on_connect
-	mqttc.on_publish = on_publish
-	mqttc.on_subscribe = on_subscribe
-	mqttc.connect("192.168.1.10", 1883, 60)
+	mqttc.connect(broker, port, 60)
 
-	rc = mqttc.loop()
-	while rc == 0 and len(waitingFor) > 0:
-		logging.debug(waitingFor)
-		rc = mqttc.loop()
-	rc = mqttc.loop()
-	publish(mqttc, "imeter", data)
+	mqttc.loop_forever()	
 
 	return 0
 
