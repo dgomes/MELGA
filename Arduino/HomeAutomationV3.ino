@@ -14,15 +14,27 @@
 #include <RemoteTransmitter.h> //https://bitbucket.org/fuzzillogic/433mhzforarduino
 
 #define DEBUG
-#define RF_RECEIVER_PIN 2 // pin 3 on the Uno
-#define RF_TRANSMITTER_PIN 9  //pin 5 on the Uno 
+#define GREENHOUSE //only available on the UNO
+
+
+#ifdef GREENHOUSE
+#define RF_RECEIVER_PIN 3 // pin 3 on the Uno - pin 2 on the duemilanove
+#define RF_TRANSMITTER_PIN 5  //pin 5 on the Uno - pin 9 on the duemilanove 
+#endif
+
+#ifndef GREENHOUSE
+#define RF_RECEIVER_PIN 2 // pin 3 on the Uno - pin 2 on the duemilanove
+#define RF_TRANSMITTER_PIN 9  //pin 5 on the Uno - pin 9 on the duemilanove 
+#endif
+
 #define LM35sensorPin 0  //A0
 #define RF_PERIOD 480 //usecs (as detected for Chacon Ref:54656 using a 434mhz receiver and fuzzillogic example code)
 #define WEATHER_PERIOD 30000
 
 homeGW gw;
 weather station(0x3F);
-door front(0x7F7B04);
+//door front(0x7F7B04);
+door front(0x0);
 Adafruit_BMP085 bmp;
 boolean bmp_present;
 unsigned long time;
@@ -162,21 +174,16 @@ void loop()
   }
 
 
-  // Door
+  // RF 433Mhz 
   if(front.available()) {
     uint64_t p = front.getPacket(); //getPacket clears the packet, we keep it to print it further ahead
-    if(front.change(p)) {
-      Serial.print("{\"id\": \"door\", \"code\": 200, \"change\": 1");
-      Serial.println("}");
-    }
-    else {
-      Serial.print("{\"id\": \"door\", \"code\": 500");
-#ifdef DEBUG
-      Serial.print(", \"Packet\": \"0x");
-      Serial.print((long unsigned int) p, HEX);
-      Serial.println("\"}");
-#endif
-    }
+    if(p > 0xFFFFF)
+      Serial.print("{\"id\": \"rf433\", \"code\": 200");
+    else
+      Serial.print("{\"id\": \"rf433\", \"code\": 500");
+    Serial.print(", \"Packet\": \"0x");
+    Serial.print((long unsigned int) p, HEX);
+    Serial.println("\"}");
   }
 
 #ifdef GREENHOUSE
