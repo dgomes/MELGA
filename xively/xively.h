@@ -26,6 +26,7 @@ typedef struct {
 	feed_t **feeds;
 	unsigned n_feeds;
 	unsigned last_feed;
+	config_t cfg;
 } data_t;
 
 void free_feed(feed_t *);
@@ -35,5 +36,8 @@ int exist_feed_topic(data_t *data, const char *topic);
 void message_callback(struct mosquitto *mosq, void *userdata, const struct mosquitto_message *message);
 void connect_callback(struct mosquitto *mosq, void *userdata, int result);
 void log_callback(struct mosquitto *mosq, void *userdata, int level, const char *str);
+
+int setup(struct mosquitto *mosq, config_t *cfg, const char *conf_filename); 
+void configure(struct mosquitto *mosq, data_t *data);
 
 #endif //_XIVELY_H_
