@@ -13,7 +13,7 @@ int parseArgs(int argc, char *argv[], config_t *c) {
 		{ "server_port",  required_argument,      0,     1 },
 		{ NULL,         0,                      NULL,           0 }
 	};
-	const char *usage = "usage: %s --conf configuration-file --port devname [--port-speed 115200] [--server localhost] [--server_port 1883]\n";
+	const char *usage = "usage: %s --conf configuration-file --port devname [--port-speed 115200] [--server localhost] [--server_port 1883] -p\n";
 
 	int option_index = 0;
 
@@ -22,12 +22,9 @@ int parseArgs(int argc, char *argv[], config_t *c) {
 	config_setting_t *serial = config_setting_get_member(root, "serial");
 	config_setting_t *mqtt = config_setting_get_member(root, "mqtt");
 
-	while ((ch = getopt_long(argc, argv, "dp", longopts, &option_index)) != -1) {
-		fprintf(stderr, "ch = %d	option_index = %d	optarg = %s\n", ch, option_index, optarg);
+	while ((ch = getopt_long(argc, argv, "p", longopts, &option_index)) != -1) {
+		//DBG("ch = %d	option_index = %d	optarg = %s\n", ch, option_index, optarg);
 		switch (ch) {
-			case 'd':
-				DBG("Debug ON\n");
-				break;
 			case 'p':
 				DBG("Persist to file\n");
 				if(conffile)

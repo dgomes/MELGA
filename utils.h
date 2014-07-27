@@ -1,5 +1,9 @@
+#ifndef _UTILS_H_
+#define _UTILS_H_
+
 #include <stdlib.h>
 #include <syslog.h>
+#include <string.h>
 
 #ifndef DEBUG
 #include <sys/types.h>
@@ -28,4 +32,7 @@
             syslog(LOG_INFO, ##__VA_ARGS__);
 #endif
 
+char* strlaststr(const char *haystack, const char* needle);
 void daemonize();
+
+#endif

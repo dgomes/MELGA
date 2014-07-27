@@ -42,23 +42,27 @@ int exist_feed_topic(data_t *data, const char *topic) {
 	} while(i!=data->last_feed);
 	return -1;
 }
-void configure(struct mosquitto *mosq, data_t *data, const char *conf_filename) {
 
-	config_t cfg;
-	config_setting_t *setting;
+int setup(struct mosquitto *mosq, config_t *cfg, const char *conf_filename) {
+	config_init(cfg);
 
-	config_init(&cfg);
-
-	DBG("Read configuration file %s\n", conf_filename);
+	INFO("Read configuration file %s\n", conf_filename);
 	/* Read the file. If there is an error, report it and exit. */
-	if(!config_read_file(&cfg, conf_filename))
+	if(!config_read_file(cfg, conf_filename))
 	{
-		ERR("%s:%d - %s", config_error_file(&cfg), config_error_line(&cfg), config_error_text(&cfg));
-		config_destroy(&cfg);
+		ERR("%s:%d - %s", config_error_file(cfg), config_error_line(cfg), config_error_text(cfg));
+		config_destroy(cfg);
 		exit(EXIT_FAILURE);
 	}
+	return 0;
+}
 
-	setting = config_lookup(&cfg, "devices");
+void configure(struct mosquitto *mosq, data_t *data) {
+
+	config_t *cfg = &data->cfg;
+	config_setting_t *setting;
+
+	setting = config_lookup(cfg, "devices");
 	if(setting != NULL) {
 		for(int i = 0; i<config_setting_length(setting); i++) {
 			config_setting_t *device = config_setting_get_elem(setting, i);
@@ -91,6 +95,11 @@ void configure(struct mosquitto *mosq, data_t *data, const char *conf_filename) 
 				asprintf(&sub, "%s/%s", data->feeds[feed_i]->topic, datastream);
 				int r = mosquitto_subscribe(mosq, NULL, sub, 2);
 				DBG("Subscribe %s = %d\n", sub, r);
+				if(r != MOSQ_ERR_SUCCESS) {
+					ERR("Could not subscribe to %s\n", sub);
+					ERR("%s\n", mosquitto_strerror(r));
+					exit(EXIT_FAILURE);
+				}
 				free(sub);
 
 				xi_datastream_t* d	= &data->feeds[feed_i]->f.datastreams[data->feeds[feed_i]->f.datastream_count];
@@ -100,7 +109,7 @@ void configure(struct mosquitto *mosq, data_t *data, const char *conf_filename) 
 			} /* channels */
 		} /* device */
 	}
-	config_destroy(&cfg);
+	config_destroy(cfg);
 }
 
 void message_callback(struct mosquitto *mosq, void *userdata, const struct mosquitto_message *message) {
@@ -133,7 +142,7 @@ void message_callback(struct mosquitto *mosq, void *userdata, const struct mosqu
 				float numf = strtof(message->payload, &endptr);
 				if(*endptr == '\0') {
 					xi_set_value_f32(p, numf);
-					DBG("%s -> %f\n", d->datastream_id, strtof(message->payload, NULL));
+		//			DBG("%s -> %f\n", d->datastream_id, strtof(message->payload, NULL));
 				} else {
 					/*we don't publish strings to xively... */
 					d->datapoint_count = 0;
@@ -141,15 +150,13 @@ void message_callback(struct mosquitto *mosq, void *userdata, const struct mosqu
 			} else {
 				/*it's an int */
 				xi_set_value_i32(p, num);
-				DBG("%s -> %ld\n", d->datastream_id, (long int) num);
+		//		DBG("%s -> %ld\n", d->datastream_id, (long int) num);
 			}
 		}
 	}
 	/*Have we received updates on all datastreams? */
-	DBG("updated = %d == feeds[feed_i]->f.datastream_count = %d\n", updated, feeds[feed_i]->f.datastream_count);
+//	DBG("updated = %d == feeds[feed_i]->f.datastream_count = %d\n", updated, feeds[feed_i]->f.datastream_count);
 	if(updated == feeds[feed_i]->f.datastream_count) {
-		DBG("SEND TO XIVELY!\n");
-
 		if(feeds[feed_i]->apikey == NULL) {
 			ERR("Failed to publish to xively.com - API Key missing for feed %s", feeds[feed_i]->topic);
 			return;
@@ -167,7 +174,7 @@ void message_callback(struct mosquitto *mosq, void *userdata, const struct mosqu
 		if(( int ) xi_get_last_error() > 0) {
 			ERR("err: %d - %s", ( int ) xi_get_last_error(), xi_get_error_string( xi_get_last_error()));
 		} else {
-			INFO("Published <%s> to feed_id:%u", feeds[feed_i]->topic, feeds[feed_i]->f.feed_id);
+			DBG("Published <%s> to feed_id:%u\n", feeds[feed_i]->topic, feeds[feed_i]->f.feed_id);
 		}
 		/* destroy the context cause we don't need it anymore */
 		xi_delete_context( xi_context );
@@ -187,13 +194,14 @@ void disconnect_callback(struct mosquitto *mosq, void *userdata, int result) {
 	if(!result){
 		NOTICE("Disconnected from MQTT Broker");
 	}else{
-		ERR("Failed to disconnect from broker");
+		ERR("Unexpectably disconnected from broker");
 	}
 }
 
 void connect_callback(struct mosquitto *mosq, void *userdata, int result) {
 	if(!result){
 		NOTICE("Connected to MQTT Broker");
+		configure(mosq, userdata);
 	}else{
 		ERR("Connection to broker failed");
 	}
@@ -207,18 +215,22 @@ void log_callback(struct mosquitto *mosq, void *userdata, int level, const char 
 }
 
 int main(int argc, char *argv[]) {
+<<<<<<< HEAD
 	char id[30] = "xively"; //TODO randomize this else broker will keep us disconnecting...
+=======
+	DBG("Xively Publisher v1\n");
+	//TODO read this from the configuration file
+	char id[30] = "xively";
+>>>>>>> dd4114ed79976a77ad2f1449f995d4e2233f85ce
 	char *host = "192.168.1.10";
 	int port = 1883;
 	int keepalive = 60;
 	bool clean_session = true;
 	struct mosquitto *mosq = NULL;
-
 	/* Open any logs here */
 	setlogmask (LOG_UPTO (LOG_INFO));
 	openlog(id, LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
 
-	NOTICE("Xively Publisher started");
 
 	daemonize();
 
@@ -228,6 +240,8 @@ int main(int argc, char *argv[]) {
 	data.last_feed = 0;
 	data.n_feeds = 0;
 	data.feeds = NULL;
+
+	setup(mosq, &data.cfg, "/home/dgomes/MELGA/xively/xively.cfg");
 
 	mosq = mosquitto_new(id, clean_session, &data);
 
@@ -245,10 +259,15 @@ int main(int argc, char *argv[]) {
 		ERR("Unable to connect.");
 		return(EXIT_FAILURE);
 	}
-	configure(mosq, &data, "xively.cfg");
 
+	NOTICE("Xively Publisher started");
 	/* do anything besides waiting for new values to publish, so lets loop_forever */
-	mosquitto_loop_forever(mosq, 5000, 1);
+	int r = mosquitto_loop_forever(mosq, -1, 1);
+	if(r != MOSQ_ERR_SUCCESS) {
+		ERR("%s\n", mosquitto_strerror(r));
+		exit(EXIT_FAILURE);
+	}
+	DBG("loop_forever exited!?\n");
 
 	/* Cleanup */
 	mosquitto_destroy(mosq);

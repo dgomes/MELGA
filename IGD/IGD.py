@@ -14,27 +14,10 @@ port = 1883
 #DON'T EDIT BELOW!!!
 published = False
 
-def parseWebpage():
+def readIGD():
+	logging.info("Not implemented")
+	sys.exit(1)
 
-	usock = urllib2.urlopen(url)
-	html = usock.read()
-	usock.close()
-
-	try:
-		soup = BeautifulSoup(html)
-		#this is fine tuned :)
-		scrap = str(soup.findAll('td')[15])
-		non_decimal = re.compile(r'[^\d\n.]+')
-		scrap = non_decimal.sub('', scrap)
-		data = scrap.split('\n')
-		energy = int(data[1])
-		power = int(data[2])
-		lastupdate = soup.findAll('td')[21].contents[0]
-	except Exception as e:
-		logging.exception(e)
-	return {'energy': energy,
-			'power': power,
-			'lastupdate': str(lastupdate)}
 
 def on_connect(mqttc, obj, rc):
 	logging.info("Connected")
@@ -67,10 +50,10 @@ def on_log(mqttc, obj, level, string):
 
 def main():
 	logging.basicConfig(format='[%(asctime)s] %(levelname)s - %(message)s', datefmt='%d/%m/%Y %I:%M:%S %p', level=logging.DEBUG)
-	logging.info("iMeter - v2")
+	logging.info("IGD - v1")
 
 	#get data
-	data = parseWebpage()
+	data = readIGD()
 
 	mqttc = mosquitto.Mosquitto("iMeter", True, data)
 	mqttc.on_log = on_log
