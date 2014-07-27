@@ -207,7 +207,7 @@ void log_callback(struct mosquitto *mosq, void *userdata, int level, const char 
 }
 
 int main(int argc, char *argv[]) {
-	char id[30] = "xively";
+	char id[30] = "xively"; //TODO randomize this else broker will keep us disconnecting...
 	char *host = "192.168.1.10";
 	int port = 1883;
 	int keepalive = 60;
