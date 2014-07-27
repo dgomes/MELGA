@@ -1,3 +1,6 @@
+#ifndef _UTILS_H_
+#define _UTILS_H_
+
 #include <stdlib.h>
 #include <syslog.h>
 #include <string.h>
@@ -29,5 +32,7 @@
             syslog(LOG_INFO, ##__VA_ARGS__);
 #endif
 
-char* strlastsrt(const char *haystack, const char* needle);
+char* strlaststr(const char *haystack, const char* needle);
 void daemonize();
+
+#endif
