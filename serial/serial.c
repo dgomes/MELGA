@@ -1,20 +1,4 @@
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
-#include <arduino-serial-lib.h>
-#include <time.h>
-#include <mosquitto.h>
-
-//OSX
-#include <sys/select.h>
-#include <sys/types.h>
-#include <sys/uio.h>
-#include <unistd.h>
-
 #include "serial.h"
-#include "json.h"
-#include "utils.h"
-#include "config.h"
 
 int setupSerial(const char *port, int baudrate) {
 	int fd = -1;
@@ -39,56 +23,56 @@ int readSerial(int fd, char *buf, int buf_max, int timeout) {
 	return sr;
 };
 
-int arduinoEvent(char *buf, last_update_t *last, config_t *cfg, struct mosquitto *mosq) {
-	time_t now = last->time;
-	if(strlen(buf)<2) return;
+int arduinoEvent(char *buf, config_t *cfg, struct mosquitto *mosq) {
+	if(strlen(buf)<2) return ERR_NO_JSON;
+	
+	json_error_t error;
+	json_t *root = json_loads(buf, 0, &error);
+
+	void *id = json_object_iter_at(root, "id");
+	if(id == NULL)
+		return ERR_NO_ID;
+	json_t *json_device = json_object_iter_value(id);
+	const char *device = json_string_value(json_device);
 
 	if(checkJSON_integer(buf,"code", 200)==0) {
+		time_t now;
 		now = time(NULL);
+		char *topic = NULL;
+		asprintf(&topic, "%s/timestamp", device);
+		char payload[20];
+		strftime(payload, 20, "%Y-%m-%d %H:%M:%S", localtime(&now));
+		mosquitto_publish(mosq, NULL, topic, strlen(payload), payload, 0, true);
 	};
-	if(strlen(buf)>0) {
-		json_error_t error;
-		json_t *root = json_loads(buf, 0, &error);
 
-		void *id = json_object_iter_at(root, "id");
-		if(id == NULL)
-			return 1;
-		json_t *json_device = json_object_iter_value(id);
-		const char *device = json_string_value(json_device);
-
-		const char *key;
-		json_t *value;
-		void *iter = json_object_iter(root);
-		while(iter) {
-			key = json_object_iter_key(iter);
-			value = json_object_iter_value(iter);
-			/* use key and value ... */
-			char *topic = NULL;
-			char *payload = NULL;
-			asprintf(&topic, "%s/%s", device, key);
-			if(json_is_integer(value)) {
-				asprintf(&payload, "%lld", json_integer_value(value));
-			} else if(json_is_real(value)) {
-				asprintf(&payload, "%f", json_real_value(value));
-			} else if(json_is_boolean(value)) {
-				if(json_is_true(value))
-					asprintf(&payload, "true");
-				else
-					asprintf(&payload, "false");
-
-			} else {
-				asprintf(&payload, "%s", json_string_value(value));
-			}
-			mosquitto_publish(mosq, NULL, topic, strlen(payload), payload, 0, true);
-//			DBG("%s -> %s\n", topic, payload);
-			free(payload);
-			free(topic);
-			iter = json_object_iter_next(root, iter);
+	const char *key;
+	json_t *value;
+	void *iter = json_object_iter(root);
+	while(iter) {
+		key = json_object_iter_key(iter);
+		value = json_object_iter_value(iter);
+		/* use key and value ... */
+		char *topic = NULL;
+		char *payload = NULL;
+		asprintf(&topic, "%s/%s", device, key);
+		if(json_is_integer(value)) {
+			asprintf(&payload, "%lld", json_integer_value(value));
+		} else if(json_is_real(value)) {
+			asprintf(&payload, "%f", json_real_value(value));
+		} else if(json_is_boolean(value)) {
+			if(json_is_true(value))
+				asprintf(&payload, "true");
+			else
+				asprintf(&payload, "false");
+		} else {
+			asprintf(&payload, "%s", json_string_value(value));
 		}
-
-
-	};
-	bzero(buf,BUF_MAX);
+		mosquitto_publish(mosq, NULL, topic, strlen(payload), payload, 0, true);
+//		DBG("%s -> %s\n", topic, payload);
+		free(payload);
+		free(topic);
+		iter = json_object_iter_next(root, iter);
+	}
 	return 0;
 }
 
@@ -100,6 +84,9 @@ void connect_callback(struct mosquitto *mosq, void *userdata, int level) {
 	asprintf(&sub, "%s/cmd", g->client_id);
 	int r = mosquitto_subscribe(mosq, NULL, sub, 2);
 	DBG("Subscribe %s = %d\n", sub, r);
+	if(r != MOSQ_ERR_SUCCESS) {
+		ERR("Could not subscribe to %s", sub);
+	}
 
 }
 
@@ -138,7 +125,7 @@ int main( int argc, char* argv[] ) {
 		exit(1);
 	}
 
-	config_write(&cfg, stderr);
+	//config_write(&cfg, stderr);
 
 	port_t serial;
 	loadSerial(&cfg, &serial);
@@ -160,12 +147,13 @@ int main( int argc, char* argv[] ) {
 
 	char hostname[BUF_MAX];
 	gethostname(hostname, BUF_MAX);
-	asprintf(&state.client_id, "%s.%s", hostname, strlaststr(serial.name, "/"));
+	asprintf(&state.client_id, "%s.%s", hostname, (char *) strlaststr(serial.name, "/"));
 	mosq = mosquitto_new(state.client_id, true, &state.arduino_fd); //use port name as client id
 	if(!mosq) {
 		ERR("Couldn't create a new mosquitto client instance\n");
 		exit(3);
 	}
+	INFO("listening for event on %s\n", serial.name);
 
 	//TODO setup callbacks
 	mosquitto_log_callback_set(mosq, log_callback);
@@ -177,6 +165,7 @@ int main( int argc, char* argv[] ) {
 		ERR("Unable to connect to %s:%d.\n", mqtt.servername, mqtt.port);
 		exit(3);
 	}
+	INFO("connected to %s:%d\n",  mqtt.servername, mqtt.port);
 
 	int mosq_fd = mosquitto_socket(mosq);
 
@@ -189,12 +178,8 @@ int main( int argc, char* argv[] ) {
 	char buf[BUF_MAX];
 	bzero(buf,BUF_MAX);
 
-	last_update_t last;
-	last.time = time(NULL);
-	last.buf = malloc(BUF_MAX);
-	bzero(last.buf,BUF_MAX);
+	int retries = 0;
 
-	int nbytes;
 
 	while(1) {
 		/* Block until input arrives on one or more active sockets. */
@@ -203,10 +188,17 @@ int main( int argc, char* argv[] ) {
 			ERR("Error in select\n");
 			sleep(BACKOFF);
 			int r = mosquitto_reconnect(mosq);
+			retries++;
 			if(r != MOSQ_ERR_SUCCESS) {
-				ERR("Could not reconnect to broker: %s\n", strerror(r));	
-				exit (EXIT_FAILURE);
+				ERR("Could not reconnect to broker: %s\n", strerror(r));
+				if(retries > MAX_RETRIES) {
+					/* Cleanup */
+					mosquitto_destroy(mosq);
+					mosquitto_lib_cleanup();
+					exit (EXIT_FAILURE);
+				}
 			} else {
+				retries = 0;
 				continue;
 			}
 		}
@@ -217,7 +209,8 @@ int main( int argc, char* argv[] ) {
 			if (FD_ISSET (i, &read_fd_set)) {
 				if(i == state.arduino_fd) {
 					if(!readSerial(state.arduino_fd, buf, BUF_MAX, serial.timeout)) {
-						arduinoEvent(buf, &last, &cfg, mosq);
+						arduinoEvent(buf, &cfg, mosq);
+						bzero(buf,BUF_MAX);
 					}
 				} else if(i == mosq_fd) {
 					mosquitto_loop_read(mosq, 1);
@@ -226,10 +219,6 @@ int main( int argc, char* argv[] ) {
 				}
 			}
 	};
-
-	/* Cleanup */
-	mosquitto_destroy(mosq);
-	mosquitto_lib_cleanup();
 
 	return EXIT_SUCCESS;
 }
