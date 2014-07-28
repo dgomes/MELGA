@@ -215,13 +215,9 @@ void log_callback(struct mosquitto *mosq, void *userdata, int level, const char 
 }
 
 int main(int argc, char *argv[]) {
-<<<<<<< HEAD
 	char id[30] = "xively"; //TODO randomize this else broker will keep us disconnecting...
-=======
 	DBG("Xively Publisher v1\n");
 	//TODO read this from the configuration file
-	char id[30] = "xively";
->>>>>>> dd4114ed79976a77ad2f1449f995d4e2233f85ce
 	char *host = "192.168.1.10";
 	int port = 1883;
 	int keepalive = 60;
