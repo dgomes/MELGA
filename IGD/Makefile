@@ -1,18 +1,17 @@
 CC ?= gcc
 #AR = gar
-#CFLAGS = -O -g -DDEBUG
 CFLAGS ?= -O
 CFLAGS += -Wall
-CFLAGS += -W -Wstrict-prototypes
-CFLAGS += -fno-common
+CFLAGS += -D_GNU_SOURCE 
 CFLAGS += -DMINIUPNPC_SET_SOCKET_TIMEOUT
 CFLAGS += -DMINIUPNPC_GET_SRC_ADDR
 CFLAGS += -D_BSD_SOURCE -D_POSIX_C_SOURCE=1
+#CFLAGS += -DDEBUG
 
-INCLUDE_DIRS ?= -I/usr/local/include/miniupnpc/
-LIBRARY_DIRS ?= -L/usr/local/lib/
+INCLUDE_DIRS ?= -I/usr/include/miniupnpc/ -I. -I..
+LIBRARY_DIRS ?= -L/usr/lib/
 
-LDFLAGS = -lminiupnpc
+LDFLAGS = -lminiupnpc -lmosquitto
 
 %.o : %.c
 	$(CC) $(CFLAGS) $(INCLUDE_DIRS) -c $< -o $@

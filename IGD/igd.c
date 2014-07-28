@@ -1,129 +1,35 @@
- /*
- * Based on the work of Thomas Bernard in upnpc
- * Copyright (c) 2014 Diogo Gomes
- * Copyright (c) 2005-2013 Thomas Bernard
- * This software is subject to the conditions detailed in the
- * LICENCE file provided in this distribution. */
+#include "igd.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-/* for IPPROTO_TCP / IPPROTO_UDP */
-#include <netinet/in.h>
-#include <miniwget.h>
-#include <miniupnpc.h>
-#include <upnpcommands.h>
-#include <upnperrors.h>
+void GetConnectionStatus(struct state *s, struct UPNPUrls * urls, struct IGDdatas * data) {
 
-/* protofix() checks if protocol is "UDP" or "TCP"
- * returns NULL if not */
-const char * protofix(const char * proto)
-{
-	static const char proto_tcp[4] = { 'T', 'C', 'P', 0};
-	static const char proto_udp[4] = { 'U', 'D', 'P', 0};
-	int i, b;
-	for(i=0, b=1; i<4; i++)
-		b = b && (   (proto[i] == proto_tcp[i])
-		          || (proto[i] == (proto_tcp[i] | 32)) );
-	if(b)
-		return proto_tcp;
-	for(i=0, b=1; i<4; i++)
-		b = b && (   (proto[i] == proto_udp[i])
-		          || (proto[i] == (proto_udp[i] | 32)) );
-	if(b)
-		return proto_udp;
-	return 0;
-}
+	unsigned last_bytessent = s->bytessent;	
+	unsigned last_bytesreceived = s->bytesreceived;	
+	unsigned last_time = s->now;
 
-static void DisplayInfos(struct UPNPUrls * urls,
-                         struct IGDdatas * data)
-{
-	char externalIPAddress[40];
-	char connectionType[64];
-	char status[64];
-	char lastconnerr[64];
-	unsigned int uptime;
-	unsigned int brUp, brDown;
-	time_t timenow, timestarted;
-	int r;
-	if(UPNP_GetConnectionTypeInfo(urls->controlURL,
-	                              data->first.servicetype,
-	                              connectionType) != UPNPCOMMAND_SUCCESS)
-		printf("GetConnectionTypeInfo failed.\n");
-	else
-		printf("Connection Type : %s\n", connectionType);
-	if(UPNP_GetStatusInfo(urls->controlURL, data->first.servicetype,
-	                      status, &uptime, lastconnerr) != UPNPCOMMAND_SUCCESS)
-		printf("GetStatusInfo failed.\n");
-	else
-		printf("Status : %s, uptime=%us, LastConnectionError : %s\n",
-		       status, uptime, lastconnerr);
-	timenow = time(NULL);
-	timestarted = timenow - uptime;
-	printf("  Time started : %s", ctime(&timestarted));
-	if(UPNP_GetLinkLayerMaxBitRates(urls->controlURL_CIF, data->CIF.servicetype,
-	                                &brDown, &brUp) != UPNPCOMMAND_SUCCESS) {
-		printf("GetLinkLayerMaxBitRates failed.\n");
+//	DisplayInfos(urls, data);
+	s->bytessent = UPNP_GetTotalBytesSent(urls->controlURL_CIF, data->CIF.servicetype);
+	s->bytesreceived = UPNP_GetTotalBytesReceived(urls->controlURL_CIF, data->CIF.servicetype);
+	s->packetssent = UPNP_GetTotalPacketsSent(urls->controlURL_CIF, data->CIF.servicetype);
+	s->packetsreceived = UPNP_GetTotalPacketsReceived(urls->controlURL_CIF, data->CIF.servicetype);
+	s->now = time(NULL);
+
+	if(last_time != 0) {
+		s->bytessent_per_second = (s->bytessent - last_bytessent)/(s->now - last_time);
+		s->bytesreceived_per_second = (s->bytesreceived - last_bytesreceived)/(s->now - last_time);
 	} else {
-		printf("MaxBitRateDown : %u bps", brDown);
-		if(brDown >= 1000000) {
-			printf(" (%u.%u Mbps)", brDown / 1000000, (brDown / 100000) % 10);
-		} else if(brDown >= 1000) {
-			printf(" (%u Kbps)", brDown / 1000);
-		}
-		printf("   MaxBitRateUp %u bps", brUp);
-		if(brUp >= 1000000) {
-			printf(" (%u.%u Mbps)", brUp / 1000000, (brUp / 100000) % 10);
-		} else if(brUp >= 1000) {
-			printf(" (%u Kbps)", brUp / 1000);
-		}
-		printf("\n");
+		s->bytessent_per_second = 0;
+		s->bytesreceived_per_second = 0;
 	}
-	r = UPNP_GetExternalIPAddress(urls->controlURL,
-	                          data->first.servicetype,
-							  externalIPAddress);
-	if(r != UPNPCOMMAND_SUCCESS) {
-		printf("GetExternalIPAddress failed. (errorcode=%d)\n", r);
-	} else {
-		printf("ExternalIPAddress = %s\n", externalIPAddress);
-	}
-}
 
-static void GetConnectionStatus(struct UPNPUrls * urls,
-                               struct IGDdatas * data)
-{
-	unsigned int bytessent, bytesreceived, packetsreceived, packetssent;
-	DisplayInfos(urls, data);
-	bytessent = UPNP_GetTotalBytesSent(urls->controlURL_CIF, data->CIF.servicetype);
-	bytesreceived = UPNP_GetTotalBytesReceived(urls->controlURL_CIF, data->CIF.servicetype);
-	packetssent = UPNP_GetTotalPacketsSent(urls->controlURL_CIF, data->CIF.servicetype);
-	packetsreceived = UPNP_GetTotalPacketsReceived(urls->controlURL_CIF, data->CIF.servicetype);
-	printf("Bytes:   Sent: %8u\tRecv: %8u\n", bytessent, bytesreceived);
-	printf("Packets: Sent: %8u\tRecv: %8u\n", packetssent, packetsreceived);
-}
-
-/* IGD:2, functions for service WANIPv6FirewallControl:1 */
-static void GetFirewallStatus(struct UPNPUrls * urls, struct IGDdatas * data)
-{
-	unsigned int bytessent, bytesreceived, packetsreceived, packetssent;
-	int firewallEnabled = 0, inboundPinholeAllowed = 0;
-
-	UPNP_GetFirewallStatus(urls->controlURL_6FC, data->IPv6FC.servicetype, &firewallEnabled, &inboundPinholeAllowed);
-	printf("FirewallEnabled: %d & Inbound Pinhole Allowed: %d\n", firewallEnabled, inboundPinholeAllowed);
-	printf("GetFirewallStatus:\n   Firewall Enabled: %s\n   Inbound Pinhole Allowed: %s\n", (firewallEnabled)? "Yes":"No", (inboundPinholeAllowed)? "Yes":"No");
-
-	bytessent = UPNP_GetTotalBytesSent(urls->controlURL_CIF, data->CIF.servicetype);
-	bytesreceived = UPNP_GetTotalBytesReceived(urls->controlURL_CIF, data->CIF.servicetype);
-	packetssent = UPNP_GetTotalPacketsSent(urls->controlURL_CIF, data->CIF.servicetype);
-	packetsreceived = UPNP_GetTotalPacketsReceived(urls->controlURL_CIF, data->CIF.servicetype);
-	printf("Bytes:   Sent: %8u\tRecv: %8u\n", bytessent, bytesreceived);
-	printf("Packets: Sent: %8u\tRecv: %8u\n", packetssent, packetsreceived);
+	DBG("Rates:   Upload: %8u\tDownload: %8u\n", s->bytessent_per_second, s->bytesreceived_per_second);
+	DBG("Bytes:   Sent: %8u\tRecv: %8u\n", s->bytessent, s->bytesreceived);
+	DBG("Packets: Sent: %8u\tRecv: %8u\n", s->packetssent, s->packetsreceived);
 }
 
 /* sample upnp client program */
 int main(int argc, char ** argv)
 {
+	time_t pool_interval = 180;
 	struct UPNPDev * devlist = 0;
 	char lanaddr[64];	/* my ip address on the LAN */
 	int i;
@@ -132,64 +38,86 @@ int main(int argc, char ** argv)
 	const char * minissdpdpath = 0;
 	int retcode = 0;
 	int error = 0;
-	int ipv6 = 0;
 
-	if( rootdescurl || (devlist = upnpDiscover(2000, multicastif, minissdpdpath, 0/*sameport*/, ipv6, &error))) {
-		struct UPNPDev * device;
+	char id[30] = "igd"; //TODO randomize this else broker will keep us disconnecting...
+        DBG("UPnP IGD Publisher v1\n");
+        //TODO read this from the configuration file
+        char *host = "192.168.1.10";
+        int port = 1883;
+        int keepalive = 60;
+        bool clean_session = true;
+        struct mosquitto *mosq = NULL;
+
+	mosquitto_lib_init();
+
+	mosq = mosquitto_new(id, clean_session, NULL);
+
+	if(mosquitto_connect(mosq, host, port, keepalive)){
+                ERR("Unable to connect.");
+                return(EXIT_FAILURE);
+        }
+
+	if( rootdescurl || (devlist = upnpDiscover(2000, multicastif, minissdpdpath, 0/*sameport*/))) {
 		struct UPNPUrls urls;
 		struct IGDdatas data;
-		if(devlist) {
-			printf("List of UPNP devices found on the network :\n");
-			for(device = devlist; device; device = device->pNext) {
-				printf(" desc: %s\n st: %s\n\n",
-					   device->descURL, device->st);
-			}
-		} else {
-			printf("upnpDiscover() error code=%d\n", error);
+		if(!devlist) {
+			ERR("upnpDiscover() error code=%d\n", error);
+			exit(EXIT_FAILURE);
 		}
 		i = 1;
 		if( (rootdescurl && UPNP_GetIGDFromUrl(rootdescurl, &urls, &data, lanaddr, sizeof(lanaddr))) || (i = UPNP_GetValidIGD(devlist, &urls, &data, lanaddr, sizeof(lanaddr)))) {
 			switch(i) {
 			case 1:
-				printf("Found valid IGD : %s\n", urls.controlURL);
+				INFO("Found valid IGD : %s\n", urls.controlURL);
 				break;
 			case 2:
-				printf("Found a (not connected?) IGD : %s\n", urls.controlURL);
-				printf("Trying to continue anyway\n");
+				ERR("Found a (not connected?) IGD : %s\n", urls.controlURL);
 				break;
 			case 3:
-				printf("UPnP device found. Is it an IGD ? : %s\n", urls.controlURL);
-				printf("Trying to continue anyway\n");
+				ERR("UPnP device found. Is it an IGD ? : %s\n", urls.controlURL);
 				break;
 			default:
-				printf("Found device (igd ?) : %s\n", urls.controlURL);
-				printf("Trying to continue anyway\n");
+				ERR("Found device (igd ?) : %s\n", urls.controlURL);
 			}
-			printf("Local LAN ip address : %s\n", lanaddr);
-			#if 0
-			printf("getting \"%s\"\n", urls.ipcondescURL);
-			descXML = miniwget(urls.ipcondescURL, &descXMLsize);
-			if(descXML)
-			{
-				/*fwrite(descXML, 1, descXMLsize, stdout);*/
-				free(descXML); descXML = NULL;
+
+			struct state cur;
+			int rc;
+			cur.now = 0;
+			while((rc = mosquitto_loop(mosq, -1, 1)) == MOSQ_ERR_SUCCESS) {
+				if(time(NULL) >= cur.now + pool_interval) {
+					GetConnectionStatus(&cur, &urls, &data);
+
+					char topic[255];
+					char payload[255];
+					sprintf(topic, "%s/%s", "igd", "outBytesSecond"); 	
+					sprintf(payload,"%8u", cur.bytessent_per_second);
+			                mosquitto_publish(mosq, NULL, topic, strlen(payload), payload, 0, true);
+					sprintf(topic, "%s/%s", "igd", "inBytesSecond"); 	
+					sprintf(payload,"%8u", cur.bytesreceived_per_second);
+			                mosquitto_publish(mosq, NULL, topic, strlen(payload), payload, 0, true);
+					sprintf(topic, "%s/%s", "igd", "inBytes"); 	
+					sprintf(payload,"%8u", cur.bytesreceived);
+			                mosquitto_publish(mosq, NULL, topic, strlen(payload), payload, 0, true);
+					sprintf(topic, "%s/%s", "igd", "outBytes"); 	
+					sprintf(payload,"%8u", cur.bytessent);
+			                mosquitto_publish(mosq, NULL, topic, strlen(payload), payload, 0, true);
+					
+				}
 			}
-			#endif
-
-
-			DisplayInfos(&urls, &data);
-			GetConnectionStatus(&urls, &data);
 
 			FreeUPNPUrls(&urls);
 		} else {
-			fprintf(stderr, "No valid UPNP Internet Gateway Device found.\n");
+			ERR("No valid UPNP Internet Gateway Device found.\n");
 			retcode = 1;
 		}
 		freeUPNPDevlist(devlist); devlist = 0;
 	} else {
-		fprintf(stderr, "No IGD UPnP Device found on the network !\n");
+		ERR("No IGD UPnP Device found on the network !\n");
 		retcode = 1;
 	}
+        /* Cleanup */
+        mosquitto_destroy(mosq);
+        mosquitto_lib_cleanup();
 	return retcode;
 }
 
