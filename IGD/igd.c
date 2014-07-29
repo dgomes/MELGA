@@ -104,7 +104,7 @@ int main(int argc, char ** argv)
 					char *raw;
 					asprintf(&raw, "{\"id\": \"igd\", \"outBytesSecond\": %u, \"inBytesSecond\": %u, \"inBytes\": %u, \"outBytes\": %u}", cur.bytessent_per_second, cur.bytesreceived_per_second, cur.bytesreceived, cur.bytessent);
 					sprintf(topic, "%s/%s", "igd", "raw"); 	
-			                mosquitto_publish(mosq, NULL, topic, strlen(raw), raw, 0, true);
+			                mosquitto_publish(mosq, NULL, topic, strlen(raw), raw, 0, false);
 					free(raw);
 				}
 			}
