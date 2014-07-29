@@ -35,6 +35,10 @@ int arduinoEvent(char *buf, config_t *cfg, struct mosquitto *mosq) {
 	json_t *json_device = json_object_iter_value(id);
 	const char *device = json_string_value(json_device);
 
+	char *topic = NULL;
+	asprintf(&topic, "%s/raw", device);
+	mosquitto_publish(mosq, NULL, topic, strlen(buf), strtok(buf,"\n"), 0, false);
+
 	if(checkJSON_integer(buf,"code", 200)==0) {
 		time_t now;
 		now = time(NULL);
@@ -44,6 +48,7 @@ int arduinoEvent(char *buf, config_t *cfg, struct mosquitto *mosq) {
 		strftime(payload, 20, "%Y-%m-%d %H:%M:%S", localtime(&now));
 		mosquitto_publish(mosq, NULL, topic, strlen(payload), payload, 0, true);
 	};
+	free(topic);
 
 	const char *key;
 	json_t *value;
@@ -87,7 +92,7 @@ void connect_callback(struct mosquitto *mosq, void *userdata, int level) {
 	if(r != MOSQ_ERR_SUCCESS) {
 		ERR("Could not subscribe to %s", sub);
 	}
-
+	free(sub);
 }
 
 void disconnect_callback(struct mosquitto *mosq, void *userdata, int level) {
