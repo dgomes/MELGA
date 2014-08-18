@@ -35,20 +35,18 @@ int arduinoEvent(char *buf, config_t *cfg, struct mosquitto *mosq) {
 	json_t *json_device = json_object_iter_value(id);
 	const char *device = json_string_value(json_device);
 
-	char *topic = NULL;
-	asprintf(&topic, "%s/raw", device);
+	char topic[255];
+	snprintf(topic, 255, "%s/raw", device);
 	mosquitto_publish(mosq, NULL, topic, strlen(buf), strtok(buf,"\n"), 0, false);
 
 	if(checkJSON_integer(buf,"code", 200)==0) {
 		time_t now;
 		now = time(NULL);
-		char *topic = NULL;
-		asprintf(&topic, "%s/timestamp", device);
+		snprintf(topic, 255, "%s/timestamp", device);
 		char payload[20];
 		strftime(payload, 20, "%Y-%m-%d %H:%M:%S", localtime(&now));
 		mosquitto_publish(mosq, NULL, topic, strlen(payload), payload, 0, true);
 	};
-	free(topic);
 
 	const char *key;
 	json_t *value;
@@ -57,25 +55,22 @@ int arduinoEvent(char *buf, config_t *cfg, struct mosquitto *mosq) {
 		key = json_object_iter_key(iter);
 		value = json_object_iter_value(iter);
 		/* use key and value ... */
-		char *topic = NULL;
-		char *payload = NULL;
-		asprintf(&topic, "%s/%s", device, key);
+		char payload[2048];
+		snprintf(topic, 255,  "%s/%s", device, key);
 		if(json_is_integer(value)) {
-			asprintf(&payload, "%lld", json_integer_value(value));
+			sprintf(payload, "%lld", json_integer_value(value));
 		} else if(json_is_real(value)) {
-			asprintf(&payload, "%f", json_real_value(value));
+			sprintf(payload, "%f", json_real_value(value));
 		} else if(json_is_boolean(value)) {
 			if(json_is_true(value))
-				asprintf(&payload, "true");
+				sprintf(payload, "true");
 			else
-				asprintf(&payload, "false");
+				sprintf(payload, "false");
 		} else {
-			asprintf(&payload, "%s", json_string_value(value));
+			sprintf(payload, "%s", json_string_value(value));
 		}
 		mosquitto_publish(mosq, NULL, topic, strlen(payload), payload, 0, true);
 //		DBG("%s -> %s\n", topic, payload);
-		free(payload);
-		free(topic);
 		iter = json_object_iter_next(root, iter);
 	}
 	return 0;
@@ -85,14 +80,13 @@ void connect_callback(struct mosquitto *mosq, void *userdata, int level) {
 	global_data_t *g = userdata;
 	
 	//Subscribe command
-	char *sub;
-	asprintf(&sub, "%s/cmd", g->client_id);
+	char sub[255];
+	snprintf(sub, 255, "%s/cmd", g->client_id);
 	int r = mosquitto_subscribe(mosq, NULL, sub, 2);
 	DBG("Subscribe %s = %d\n", sub, r);
 	if(r != MOSQ_ERR_SUCCESS) {
 		ERR("Could not subscribe to %s", sub);
 	}
-	free(sub);
 }
 
 void disconnect_callback(struct mosquitto *mosq, void *userdata, int level) {
