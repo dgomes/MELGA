@@ -58,16 +58,16 @@ int arduinoEvent(char *buf, config_t *cfg, struct mosquitto *mosq) {
 		char payload[2048];
 		snprintf(topic, 255,  "%s/%s", device, key);
 		if(json_is_integer(value)) {
-			sprintf(payload, "%lld", json_integer_value(value));
+			snprintf(payload, 2048, "%lld", json_integer_value(value));
 		} else if(json_is_real(value)) {
-			sprintf(payload, "%f", json_real_value(value));
+			snprintf(payload, 2048, "%f", json_real_value(value));
 		} else if(json_is_boolean(value)) {
 			if(json_is_true(value))
-				sprintf(payload, "true");
+				snprintf(payload, 2048, "true");
 			else
-				sprintf(payload, "false");
+				snprintf(payload, 2048, "false");
 		} else {
-			sprintf(payload, "%s", json_string_value(value));
+			snprintf(payload, 2048, "%s", json_string_value(value));
 		}
 		mosquitto_publish(mosq, NULL, topic, strlen(payload), payload, 0, true);
 //		DBG("%s -> %s\n", topic, payload);
