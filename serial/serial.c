@@ -25,7 +25,7 @@ int readSerial(int fd, char *buf, int buf_max, int timeout) {
 
 int arduinoEvent(char *buf, config_t *cfg, struct mosquitto *mosq) {
 	if(strlen(buf)<2) return ERR_NO_JSON;
-	
+
 	json_error_t error;
 	json_t *root = json_loads(buf, 0, &error);
 
@@ -78,7 +78,7 @@ int arduinoEvent(char *buf, config_t *cfg, struct mosquitto *mosq) {
 
 void connect_callback(struct mosquitto *mosq, void *userdata, int level) {
 	global_data_t *g = userdata;
-	
+
 	//Subscribe command
 	char *sub;
 	asprintf(&sub, "%s/cmd", g->client_id);
@@ -130,11 +130,17 @@ int main( int argc, char* argv[] ) {
 	port_t serial;
 	loadSerial(&cfg, &serial);
 
+	if(serial.name == NULL) {
+		ERR("Could not load serial configuration\n");
+		exit(2);
+	}
+
 	if(!strlen(serial.name)) {
 		ERR("You must specify the serial port\n");
 		exit(2);
 	}
 
+	DBG("Setting up serial port...");
 	state.arduino_fd = setupSerial(serial.name, serial.speed);
 	if(state.arduino_fd < 0) {
 		ERR("Failed to setup serial port %s @ %d\n", serial.name, serial.speed);
