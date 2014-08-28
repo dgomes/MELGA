@@ -29,9 +29,17 @@ int arduinoEvent(char *buf, config_t *cfg, struct mosquitto *mosq) {
 	json_error_t error;
 	json_t *root = json_loads(buf, 0, &error);
 
+    if(root == NULL) {
+        DBG("<%s>\n", buf);
+        ERR("error: on line %d: %s\n", error.line, error.text);
+		return ERR_NO_JSON;
+    }
+
 	void *id = json_object_iter_at(root, "id");
-	if(id == NULL)
+	if(id == NULL) {
+		json_decref(root);
 		return ERR_NO_ID;
+	}
 	json_t *json_device = json_object_iter_value(id);
 	const char *device = json_string_value(json_device);
 
@@ -39,7 +47,15 @@ int arduinoEvent(char *buf, config_t *cfg, struct mosquitto *mosq) {
 	snprintf(topic, 255, "%s/raw", device);
 	mosquitto_publish(mosq, NULL, topic, strlen(buf), strtok(buf,"\n"), 0, false);
 
-	if(checkJSON_integer(buf,"code", 200)==0) {
+	void *code = json_object_iter_at(root, "code");
+	if(code == NULL) {
+		json_decref(root);
+		return ERR_NO_ID;
+	}
+	json_t *json_code = json_object_iter_value(code);
+
+	if(json_integer_value(json_code) == 200) {
+		DBG("200 OK\n");
 		time_t now;
 		now = time(NULL);
 		snprintf(topic, 255, "%s/timestamp", device);
@@ -73,6 +89,7 @@ int arduinoEvent(char *buf, config_t *cfg, struct mosquitto *mosq) {
 //		DBG("%s -> %s\n", topic, payload);
 		iter = json_object_iter_next(root, iter);
 	}
+	json_decref(root);
 	return 0;
 }
 
@@ -185,7 +202,7 @@ int main( int argc, char* argv[] ) {
 
 	int retries = 0;
 
-
+	//TODO setup syscall to stop process
 	while(1) {
 		/* Block until input arrives on one or more active sockets. */
 		read_fd_set = active_fd_set;
