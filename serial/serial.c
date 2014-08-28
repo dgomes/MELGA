@@ -55,7 +55,6 @@ int arduinoEvent(char *buf, config_t *cfg, struct mosquitto *mosq) {
 	json_t *json_code = json_object_iter_value(code);
 
 	if(json_integer_value(json_code) == 200) {
-		DBG("200 OK\n");
 		time_t now;
 		now = time(NULL);
 		snprintf(topic, 255, "%s/timestamp", device);
