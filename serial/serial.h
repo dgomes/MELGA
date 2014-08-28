@@ -15,7 +15,6 @@
 #include <unistd.h>
 
 #include <utils.h>
-#include "json.h"
 #include "config.h"
 
 #define ERR_NO_JSON 1
