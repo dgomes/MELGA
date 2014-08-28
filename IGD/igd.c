@@ -88,20 +88,24 @@ int main(int argc, char ** argv)
 					GetConnectionStatus(&cur, &urls, &data);
 
 					char topic[255];
-					char payload[255];
+					char payload[10];
 					sprintf(topic, "%s/%s", "igd", "outBytesSecond"); 	
-					sprintf(payload,"%8u", cur.bytessent_per_second);
+					sprintf(payload,"%u", cur.bytessent_per_second);
 			                mosquitto_publish(mosq, NULL, topic, strlen(payload), payload, 0, true);
 					sprintf(topic, "%s/%s", "igd", "inBytesSecond"); 	
-					sprintf(payload,"%8u", cur.bytesreceived_per_second);
+					sprintf(payload,"%u", cur.bytesreceived_per_second);
 			                mosquitto_publish(mosq, NULL, topic, strlen(payload), payload, 0, true);
 					sprintf(topic, "%s/%s", "igd", "inBytes"); 	
-					sprintf(payload,"%8u", cur.bytesreceived);
+					sprintf(payload,"%u", cur.bytesreceived);
 			                mosquitto_publish(mosq, NULL, topic, strlen(payload), payload, 0, true);
 					sprintf(topic, "%s/%s", "igd", "outBytes"); 	
-					sprintf(payload,"%8u", cur.bytessent);
+					sprintf(payload,"%u", cur.bytessent);
 			                mosquitto_publish(mosq, NULL, topic, strlen(payload), payload, 0, true);
-					
+					char *raw;
+					asprintf(&raw, "{\"id\": \"igd\", \"outBytesSecond\": %u, \"inBytesSecond\": %u, \"inBytes\": %u, \"outBytes\": %u}", cur.bytessent_per_second, cur.bytesreceived_per_second, cur.bytesreceived, cur.bytessent);
+					sprintf(topic, "%s/%s", "igd", "raw"); 	
+			                mosquitto_publish(mosq, NULL, topic, strlen(raw), raw, 0, false);
+					free(raw);
 				}
 			}
 
