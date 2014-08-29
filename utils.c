@@ -13,6 +13,7 @@ char* strlaststr(const char* haystack, const char* needle) {
    return loc;
 }
 
+#ifdef DAEMON
 void daemonize() {
 	#ifndef DEBUG
 	/* Our process ID and Session ID */
@@ -52,3 +53,5 @@ void daemonize() {
     close(STDERR_FILENO);
 	#endif
 }
+
+#endif
