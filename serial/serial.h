@@ -15,14 +15,13 @@
 #include <unistd.h>
 
 #include <utils.h>
-#include "json.h"
 #include "config.h"
 
 #define ERR_NO_JSON 1
-#define ERR_NO_ID 2 
+#define ERR_NO_ID 2
 
 #define BACKOFF 1 //seconds
-#define MAX_RETRIES 60 
+#define MAX_RETRIES 60
 
 #define BUF_MAX  512
 
