@@ -99,7 +99,7 @@ void connect_callback(struct mosquitto *mosq, void *userdata, int level) {
 	char sub[255];
 	snprintf(sub, 255, "%s/cmd", g->client_id);
 	int r = mosquitto_subscribe(mosq, NULL, sub, 2);
-	DBG("Subscribe %s = %d\n", sub, r);
+	INFO("Subscribe %s = %d\n", sub, r);
 	if(r != MOSQ_ERR_SUCCESS) {
 		ERR("Could not subscribe to %s", sub);
 	}
@@ -129,6 +129,7 @@ void message_callback(struct mosquitto *mosq, void *userdata, const struct mosqu
 }
 
 int main( int argc, char* argv[] ) {
+	INFO("%s v1.0", argv[0]);
 	config_t cfg;
 	global_data_t state;
 	struct mosquitto *mosq = NULL;

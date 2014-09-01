@@ -40,7 +40,7 @@ int main(int argc, char ** argv)
 	int error = 0;
 
 	char id[30] = "igd"; //TODO randomize this else broker will keep us disconnecting...
-        DBG("UPnP IGD Publisher v1\n");
+        INFO("UPnP IGD Publisher v1\n");
         //TODO read this from the configuration file
         char *host = "192.168.1.10";
         int port = 1883;
@@ -81,9 +81,8 @@ int main(int argc, char ** argv)
 			}
 
 			struct state cur;
-			int rc;
 			cur.now = 0;
-			while((rc = mosquitto_loop(mosq, -1, 1)) == MOSQ_ERR_SUCCESS) {
+			while((retcode = mosquitto_loop(mosq, -1, 1)) == MOSQ_ERR_SUCCESS) {
 				if(time(NULL) >= cur.now + pool_interval) {
 					GetConnectionStatus(&cur, &urls, &data);
 
@@ -122,6 +121,7 @@ int main(int argc, char ** argv)
         /* Cleanup */
         mosquitto_destroy(mosq);
         mosquitto_lib_cleanup();
+	INFO("%s EXITED", argv[0]);
 	return retcode;
 }
 
