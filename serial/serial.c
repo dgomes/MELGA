@@ -129,7 +129,8 @@ void message_callback(struct mosquitto *mosq, void *userdata, const struct mosqu
 }
 
 int main( int argc, char* argv[] ) {
-	INFO("%s v1.0", argv[0]);
+	setbuf(stdout, NULL);
+	INFO("%s v1.0\n", argv[0]);
 	config_t cfg;
 	global_data_t state;
 	struct mosquitto *mosq = NULL;
@@ -162,6 +163,7 @@ int main( int argc, char* argv[] ) {
 		ERR("Failed to setup serial port %s @ %d\n", serial.name, serial.speed);
 		exit(2);
 	}
+	INFO("listening for event on %s\n", serial.name);
 
 	mosquitto_lib_init();
 	mqttserver_t mqtt;
@@ -175,7 +177,6 @@ int main( int argc, char* argv[] ) {
 		ERR("Couldn't create a new mosquitto client instance\n");
 		exit(3);
 	}
-	INFO("listening for event on %s\n", serial.name);
 
 	//TODO setup callbacks
 	mosquitto_log_callback_set(mosq, log_callback);
@@ -183,11 +184,12 @@ int main( int argc, char* argv[] ) {
 	mosquitto_connect_callback_set(mosq, connect_callback);
 	mosquitto_message_callback_set(mosq, message_callback);
 
+	INFO("Connecting to %s:%d ... ", mqtt.servername, mqtt.port);
 	if(mosquitto_connect(mosq, mqtt.servername, mqtt.port, mqtt.keepalive)){
-		ERR("Unable to connect to %s:%d.\n", mqtt.servername, mqtt.port);
+		ERR("\nUnable to connect to %s:%d.\n", mqtt.servername, mqtt.port);
 		exit(3);
 	}
-	INFO("connected to %s:%d\n",  mqtt.servername, mqtt.port);
+	INFO("done\n");
 
 	int mosq_fd = mosquitto_socket(mosq);
 
