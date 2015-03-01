@@ -31,6 +31,8 @@ Dependencies
  * libxively (https://github.com/xively/libxively)
  * libmosquitto (http://mosquitto.org/download/)
  * libconfig
+ * libjansson
+ * pkg-config
 
 Install
 -------
