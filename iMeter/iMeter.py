@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import logging
+import datetime 
 import sys
 import mosquitto
 import urllib2
@@ -29,7 +30,7 @@ def parseWebpage():
 		data = scrap.split('\n')
 		energy = int(data[1])
 		power = int(data[2])
-		lastupdate = soup.findAll('td')[21].contents[0]
+		lastupdate = "\"" + soup.findAll('td')[21].contents[0] +"\""
 	except Exception as e:
 		logging.exception(e)
 	return {'energy': energy,
@@ -55,11 +56,15 @@ def on_message(mqttc, userdata, msg):
 
 def publish(mqttc, topic, data):
 	logging.info("Publish data")
+	raw = "{\"id\": \"imeter\""
 	for key in data.keys():
 		r, mid = mqttc.publish(topic + "/" + key, data[key], retain=True)
 		logging.debug(topic+"/"+ str(key) + " -> " + str(data[key]))
+		raw = raw + ", \"" + str(key) + "\": " + str(data[key])
 		if r != mosquitto.MOSQ_ERR_SUCCESS:
 			logging.error("ERROR on publish")
+	raw = raw + "}"
+	mqttc.publish(topic + "/raw", raw, retain=False)
 
 def on_log(mqttc, obj, level, string):
 	pass
