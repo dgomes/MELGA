@@ -13,13 +13,15 @@
 
 #include <mosquitto.h>
 
+#include "utils.h"
+#include "config.h"
 #include "igmp.h"
+
+#define NAME    "meostb"
 
 #define HELLO_PORT 8082
 #define HELLO_GROUP "239.255.255.250"
 #define MSGBUFSIZE 1500
-
-static int dbg_mode = 0;
 
 struct ip_mreq group;
 
@@ -29,7 +31,7 @@ char * parse_ssdp(char *stream, char *buf) {
 
     stream[0] = '\0';
 
-    if(dbg_mode) fprintf(stderr, "%s\n", buf);
+    DBG("%s\n", buf);
 
     document = xmlRecoverMemory(buf, strlen(buf));
 
@@ -37,7 +39,7 @@ char * parse_ssdp(char *stream, char *buf) {
     root = root->children; // <activities>
     for (node = root->children; node; node = node->next) {
         if(xmlStrEqual(node->name, (xmlChar *) "tune")) {
-            xmlChar *src = xmlGetProp(node, "src");
+            xmlChar *src = xmlGetProp(node, (const xmlChar *) "src");
             strcpy(stream, (const char *) src);
             xmlFree(src);
             break;
@@ -51,18 +53,38 @@ char * parse_ssdp(char *stream, char *buf) {
 
 int main(int argc, char *argv[])
 {
+    setbuf(stdout, NULL);
+    INFO("%s v1.0\n", argv[0]);
+    config_t cfg;
+    struct mosquitto *mosq = NULL;
+
+    config_init(&cfg);
+    loadDefaults(&cfg);
+
+    if(parseArgs(argc, argv, &cfg)) {
+        exit(1);
+    }
+
     struct sockaddr_in addr;
     int fd, nbytes;
     struct ip_mreq mreq;
     char msgbuf[MSGBUFSIZE];
 
-    struct mosquitto *mosq = NULL;
     mosquitto_lib_init();
     mosq = mosquitto_new(NULL, true, NULL);
     if(!mosq) {
         perror("mosquitto");
         exit(1);
     }
+    mqttserver_t mqtt;
+    loadMQTT(&cfg, &mqtt);
+
+    INFO("Connecting to %s:%d ... ", mqtt.servername, mqtt.port);
+    if(mosquitto_connect(mosq, mqtt.servername, mqtt.port, mqtt.keepalive)){
+        ERR("\nUnable to connect to %s:%d.\n", mqtt.servername, mqtt.port);
+        exit(3);
+    }
+    INFO("done\n");
 
     if ((fd=socket(AF_INET,SOCK_DGRAM,0)) < 0) {
         perror("socket");
@@ -99,25 +121,41 @@ int main(int argc, char *argv[])
         perror("setsockopt");
         exit(1);
     } else {
-        printf("IP_ADD_MEMBERSHIP Ok\n");
+        DBG("IP_ADD_MEMBERSHIP Ok\n");
     }
 
     /* now just enter a read-print loop */
-    printf("GO!\n");
+    DBG("GO!\n");
 
     if(IGMPv3_membership_report_message(HELLO_GROUP))
         exit(1);
 
+
+    int ts = (unsigned)time(NULL);
     while (1) {
+        mosquitto_loop(mosq, -1, 1);
         socklen_t addrlen=sizeof(addr);
         if ((nbytes=recvfrom(fd,&msgbuf,MSGBUFSIZE,0, (struct sockaddr *) &addr,&addrlen)) < 0) {
             perror("recvfrom");
             exit(1);
         }
-        char stream[255];
-        parse_ssdp(stream, strchr(&msgbuf[49], '<'));
-        fprintf(stderr, "%s\n", stream);
+        char buf[255];
+        parse_ssdp(buf, strchr(&msgbuf[49], '<'));
+
+        char topic[255];
+        snprintf(topic, 255, "%s/raw", NAME);
+        DBG("publish to %s", topic);
+        mosquitto_publish(mosq, NULL, topic, strlen(buf), strtok(buf,"\n"), 0, false);
+
+        snprintf(topic, 255, "%s/ts", NAME);
+        snprintf(buf, 255, "%d", (unsigned) time(NULL));
+        mosquitto_publish(mosq, NULL, topic, strlen(buf), strtok(buf,"\n"), 0, true);
+
         bzero(msgbuf, MSGBUFSIZE);
+        if((unsigned)time(NULL) - ts > IGMP_INTERVAL) {
+            IGMPv3_membership_report_message(HELLO_GROUP);
+            ts = (unsigned)time(NULL);
+        }
     }
 }
 

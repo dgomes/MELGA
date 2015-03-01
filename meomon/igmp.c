@@ -19,7 +19,7 @@ uint16_t checksum(void* vdata,size_t length) {
 char *multicast_address = NULL;
 
 void refresh_igmp(int s) {
-    fprintf(stderr, "what's up?\n");
+    DBG("what's up?\n");
     IGMPv3_membership_report_message(multicast_address);
 }
 
