@@ -14,10 +14,10 @@ OBJS    := $(SOURCES:.c=.o) ../utils.o
 %.o : %.c
 	$(CC) $(INCLUDE_DIRS) -c $(CFLAGS) $< -o $@
 
-main: $(OBJS)
+meomon: $(OBJS)
 	$(CC) $(LIBRARY_DIRS) -o $@ $(LDFLAGS) $^ $(LIBRARIES)
 
 clean:
-	rm $(OBJS) main
+	rm $(OBJS) meomon
 
-all: main
+all: meomon
