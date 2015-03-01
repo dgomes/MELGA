@@ -13,29 +13,39 @@ broker = "localhost"
 port = 1883
 
 def action(luminosity, power):
-#	print "luminosity = " + str(luminosity)
-#	print "power = " + str(power)
+	print "luminosity = " + str(luminosity), ",", "power = " + str(power)
 	if luminosity < 750:
-		if power > 250:
-#			print "Turn ON"
+		if power > 240:
+			print "Turn ON - Kitchen"
 			return "R00074EE7"
 		else:
-#			print "Turn OFF"
+			print "Turn OFF - Kitchen"
 			return "R00074EE6"
 	else:
-#		print "Turn OFF"
+		print "Turn OFF - Kitchen"
 		return "R00074EE6"
 
 def on_connect(mqttc, userdata, rc):
-	mqttc.subscribe([("imeter/power", 0), ("greenhouse/Luminosity", 0)])
+	mqttc.subscribe([("imeter/power", 0), ("greenhouse/Luminosity", 0), ("weather/night", 0)])
  
 def on_message(mqttc, userdata, message):
 #	print message.topic + " -> " + str(message.payload)	
 	userdata[message.topic] = message.payload
+
+	cmd = ""
 	
-	if "greenhouse/Luminosity" in userdata and "imeter/power" in userdata:
-		cmd = action(int(userdata["greenhouse/Luminosity"]), int(userdata["imeter/power"]))
+#	if "greenhouse/Luminosity" in userdata and "imeter/power" in userdata:
+#		cmd = action(int(userdata["greenhouse/Luminosity"]), int(userdata["imeter/power"]))
+	
+	if "weather/night" in userdata and "imeter/power" in userdata:
+		if "True" in userdata["weather/night"]:
+			cmd = action(0, int(userdata["imeter/power"]))
+		else:
+			cmd = action(1000, int(userdata["imeter/power"]))
+	
+	if len(cmd):
 		mqttc.publish("storage./ttyUSB0/cmd", cmd)
+		mqttc.publish("storage./ttyUSB1/cmd", cmd)
 		mqttc.disconnect()
  
 mypid = os.getpid()
