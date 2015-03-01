@@ -130,8 +130,9 @@ int main(int argc, char *argv[])
     if(IGMPv3_membership_report_message(HELLO_GROUP))
         exit(1);
 
-
+#ifdef TS
     int ts = (unsigned)time(NULL);
+#endif
     while (1) {
         mosquitto_loop(mosq, -1, 1);
         socklen_t addrlen=sizeof(addr);
@@ -147,15 +148,20 @@ int main(int argc, char *argv[])
         DBG("publish to %s", topic);
         mosquitto_publish(mosq, NULL, topic, strlen(buf), strtok(buf,"\n"), 0, false);
 
+#ifdef TS
         snprintf(topic, 255, "%s/ts", NAME);
         snprintf(buf, 255, "%d", (unsigned) time(NULL));
         mosquitto_publish(mosq, NULL, topic, strlen(buf), strtok(buf,"\n"), 0, true);
+#endif
 
         bzero(msgbuf, MSGBUFSIZE);
+
+#ifdef OSX
         if((unsigned)time(NULL) - ts > IGMP_INTERVAL) {
             IGMPv3_membership_report_message(HELLO_GROUP);
             ts = (unsigned)time(NULL);
         }
+#endif
     }
 }
 
