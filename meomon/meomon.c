@@ -45,6 +45,7 @@ char * parse_ssdp(char *stream, char *buf) {
             break;
         }
     }
+    xmlFreeNode(root);
     xmlFreeDoc(document);
     xmlCleanupParser();
 

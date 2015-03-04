@@ -2,8 +2,8 @@
 
 void GetConnectionStatus(struct state *s, struct UPNPUrls * urls, struct IGDdatas * data) {
 
-	unsigned last_bytessent = s->bytessent;	
-	unsigned last_bytesreceived = s->bytesreceived;	
+	unsigned last_bytessent = s->bytessent;
+	unsigned last_bytesreceived = s->bytesreceived;
 	unsigned last_time = s->now;
 
 //	DisplayInfos(urls, data);
@@ -88,21 +88,21 @@ int main(int argc, char ** argv)
 
 					char topic[255];
 					char payload[10];
-					sprintf(topic, "%s/%s", "igd", "outBytesSecond"); 	
+					sprintf(topic, "%s/%s", "igd", "outBytesSecond");
 					sprintf(payload,"%u", cur.bytessent_per_second);
 			                mosquitto_publish(mosq, NULL, topic, strlen(payload), payload, 0, true);
-					sprintf(topic, "%s/%s", "igd", "inBytesSecond"); 	
+					sprintf(topic, "%s/%s", "igd", "inBytesSecond");
 					sprintf(payload,"%u", cur.bytesreceived_per_second);
 			                mosquitto_publish(mosq, NULL, topic, strlen(payload), payload, 0, true);
-					sprintf(topic, "%s/%s", "igd", "inBytes"); 	
+					sprintf(topic, "%s/%s", "igd", "inBytes");
 					sprintf(payload,"%u", cur.bytesreceived);
 			                mosquitto_publish(mosq, NULL, topic, strlen(payload), payload, 0, true);
-					sprintf(topic, "%s/%s", "igd", "outBytes"); 	
+					sprintf(topic, "%s/%s", "igd", "outBytes");
 					sprintf(payload,"%u", cur.bytessent);
 			                mosquitto_publish(mosq, NULL, topic, strlen(payload), payload, 0, true);
 					char *raw;
 					asprintf(&raw, "{\"id\": \"igd\", \"outBytesSecond\": %u, \"inBytesSecond\": %u, \"inBytes\": %u, \"outBytes\": %u}", cur.bytessent_per_second, cur.bytesreceived_per_second, cur.bytesreceived, cur.bytessent);
-					sprintf(topic, "%s/%s", "igd", "raw"); 	
+					sprintf(topic, "%s/%s", "igd", "raw");
 			                mosquitto_publish(mosq, NULL, topic, strlen(raw), raw, 0, false);
 					free(raw);
 				}
