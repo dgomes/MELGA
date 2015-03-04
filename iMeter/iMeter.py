@@ -9,7 +9,7 @@ from BeautifulSoup import BeautifulSoup
 
 #Customize here
 url = 'http://192.168.1.79/listdev.htm'
-broker = 'home.diogogomes.com'
+broker = '192.168.1.10'
 port = 1883
 
 #DON'T EDIT BELOW!!!
@@ -31,6 +31,7 @@ def parseWebpage():
 		energy = int(data[1])
 		power = int(data[2])
 		lastupdate = "\"" + soup.findAll('td')[21].contents[0] +"\""
+		logging.info("energy: {}	power: {}	lastupdate: {}".format(energy, power, lastupdate))
 	except Exception as e:
 		logging.exception(e)
 	return {'energy': energy,
@@ -68,7 +69,7 @@ def publish(mqttc, topic, data):
 
 def on_log(mqttc, obj, level, string):
 	pass
-#	logging.debug(string)
+	#logging.debug(string)
 
 def main():
 	logging.basicConfig(format='[%(asctime)s] %(levelname)s - %(message)s', datefmt='%d/%m/%Y %I:%M:%S %p', level=logging.DEBUG)
