@@ -8,7 +8,7 @@ from BeautifulSoup import BeautifulSoup
 
 #Customize here
 url = 'http://192.168.1.79/listdev.htm'
-broker = 'localhost'
+broker = 'home.diogogomes.com'
 port = 1883
 
 #DON'T EDIT BELOW!!!
@@ -46,7 +46,7 @@ def on_message(mqttc, userdata, msg):
 	logging.debug("on_message: " + msg.topic + " -> " + msg.payload)
 
 	userdata['energySpent'] = int(userdata['energy']) - int(msg.payload)
-	
+
 	if published:
 		mqttc.disconnect()
 	else:
@@ -78,7 +78,7 @@ def main():
 	mqttc.on_connect = on_connect
 	mqttc.connect(broker, port, 60)
 
-	mqttc.loop_forever()	
+	mqttc.loop_forever()
 
 	return 0
 
