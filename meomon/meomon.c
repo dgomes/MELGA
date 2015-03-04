@@ -46,7 +46,6 @@ char * parse_ssdp(char *stream, char *buf) {
             break;
         }
     }
-    xmlFreeNode(root);
     xmlFreeDoc(document);
     xmlCleanupParser();
 
@@ -159,10 +158,12 @@ int main(int argc, char *argv[])
         bzero(msgbuf, MSGBUFSIZE);
 
 #ifdef OSX
+        #ifdef TS
         if((unsigned)time(NULL) - ts > IGMP_INTERVAL) {
             IGMPv3_membership_report_message(HELLO_GROUP);
             ts = (unsigned)time(NULL);
         }
+        #endif
 #endif
     }
 }
