@@ -22,6 +22,7 @@
 #define HELLO_PORT 8082
 #define HELLO_GROUP "239.255.255.250"
 #define MSGBUFSIZE 1500
+#define TOPIC_STR_BUF 64
 
 struct ip_mreq group;
 
@@ -45,6 +46,7 @@ char * parse_ssdp(char *stream, char *buf) {
             break;
         }
     }
+    xmlFreeNode(root);
     xmlFreeDoc(document);
     xmlCleanupParser();
 
@@ -143,14 +145,14 @@ int main(int argc, char *argv[])
         char buf[255];
         parse_ssdp(buf, strchr(&msgbuf[49], '<'));
 
-        char topic[255];
-        snprintf(topic, 255, "%s/raw", NAME);
+        char topic[TOPIC_STR_BUF];
+        snprintf(topic, TOPIC_STR_BUF, "%s/raw", NAME);
         DBG("publish to %s", topic);
         mosquitto_publish(mosq, NULL, topic, strlen(buf), strtok(buf,"\n"), 0, false);
 
 #ifdef TS
-        snprintf(topic, 255, "%s/ts", NAME);
-        snprintf(buf, 255, "%d", (unsigned) time(NULL));
+        snprintf(topic, TOPIC_STR_BUF, "%s/ts", NAME);
+        snprintf(buf, TOPIC_STR_BUF, "%d", (unsigned) time(NULL));
         mosquitto_publish(mosq, NULL, topic, strlen(buf), strtok(buf,"\n"), 0, true);
 #endif
 
