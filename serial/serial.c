@@ -123,8 +123,10 @@ void message_callback(struct mosquitto *mosq, void *userdata, const struct mosqu
 	DBG("%s -> %s\n", message->topic, (char *) message->payload);
 
 	global_data_t *g = userdata;
-	serialport_write(g->arduino_fd, message->payload);
-	serialport_write(g->arduino_fd, "\n");
+	if(message->payload != NULL) {
+		serialport_write(g->arduino_fd, message->payload);
+		serialport_write(g->arduino_fd, "\n");
+	}
 
 }
 

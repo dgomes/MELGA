@@ -1,4 +1,5 @@
 # /etc/cron.d/melga: crontab fragment for melga 
 #this runs periodic tasks such as scrappers and pollers
 
-*/5 * * * * username /home/username/MELGA/iMeter/iMeter.py 2> /dev/null 
+*/5 * * * * dgomes /home/dgomes/MELGA/iMeter/iMeter.py 2> /dev/null 
+*/5 * * * * dgomes /home/dgomes/MELGA/Weather/yahoo.py 2> /dev/null 
