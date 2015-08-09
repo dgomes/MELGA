@@ -1,0 +1,3 @@
+LIB_MOSQUITTO=-lmosquitto
+LIBRARIES+=$(LIB_MOSQUITTO)
+

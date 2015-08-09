@@ -29,6 +29,7 @@ int parseArgs(int argc, char *argv[], config_t *c) {
 		DBG("ch = %d	option_index = %d	optarg = %s\n", ch, option_index, optarg);
 		switch (ch) {
 			case 'c':
+				//TODO make config file argument non required
 				DBG("Reading from %s\n", optarg);
 				config_read_file(c, optarg);
 				conffile = strdup(optarg);

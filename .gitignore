@@ -2,3 +2,6 @@
 *.swp
 *.conf
 *.cfg
+meomon/meomon
+serial/serial
+IGD/igd
