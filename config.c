@@ -57,6 +57,7 @@ int parseArgs(int argc, char *argv[], config_t *c) {
 				}
 				break;
 			case '?':
+                break;
 			default:
 				fprintf(stdout,usage, argv[0]);
 				return 1;

@@ -139,10 +139,14 @@ int main( int argc, char* argv[] ) {
 
 	config_init(&cfg);
 	loadDefaults(&cfg);
+    loadSerialDefaults(&cfg);
 
 	if(parseArgs(argc, argv, &cfg)) {
 		exit(1);
 	}
+	if(parseSerialArgs(argc, argv, &cfg)) {
+        exit(1);
+    }
 
 	//config_write(&cfg, stderr);
 
