@@ -22,6 +22,7 @@ void GetConnectionStatus(struct state *s, struct UPNPUrls * urls, struct IGDdata
 	}
 
 	DBG("Rates:   Upload: %8u\tDownload: %8u\n", s->bytessent_per_second, s->bytesreceived_per_second);
+	DBG("Rates:   Upload: %8.2f kbits\tDownload: %8.2f kbits\n", ((double) s->bytessent_per_second)/128, ((double)s->bytesreceived_per_second)/128);
 	DBG("Bytes:   Sent: %8u\tRecv: %8u\n", s->bytessent, s->bytesreceived);
 	DBG("Packets: Sent: %8u\tRecv: %8u\n", s->packetssent, s->packetsreceived);
 }
@@ -29,7 +30,7 @@ void GetConnectionStatus(struct state *s, struct UPNPUrls * urls, struct IGDdata
 /* sample upnp client program */
 int main(int argc, char ** argv)
 {
-	time_t pool_interval = 180;
+	time_t pool_interval = 180; //TODO command line parameter ...
 	struct UPNPDev * devlist = 0;
 	char lanaddr[64];	/* my ip address on the LAN */
 	int i;
@@ -94,6 +95,12 @@ int main(int argc, char ** argv)
 					sprintf(topic, "%s/%s", "igd", "inBytesSecond");
 					sprintf(payload,"%u", cur.bytesreceived_per_second);
 			                mosquitto_publish(mosq, NULL, topic, strlen(payload), payload, 0, true);
+					sprintf(topic, "%s/%s", "igd", "uploadRate");
+					sprintf(payload,"%.0f", ((double) cur.bytessent_per_second)/128);
+			                mosquitto_publish(mosq, NULL, topic, strlen(payload), payload, 0, false);
+					sprintf(topic, "%s/%s", "igd", "downloadRate");
+					sprintf(payload,"%.0f", ((double) cur.bytesreceived_per_second)/128);
+			                mosquitto_publish(mosq, NULL, topic, strlen(payload), payload, 0, false);
 					sprintf(topic, "%s/%s", "igd", "inBytes");
 					sprintf(payload,"%u", cur.bytesreceived);
 			                mosquitto_publish(mosq, NULL, topic, strlen(payload), payload, 0, true);
