@@ -1,3 +1,4 @@
+pyparsing
 paho-mqtt
 BeautifulSoup
 pylibconfig2
