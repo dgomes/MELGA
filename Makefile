@@ -11,12 +11,16 @@ CFLAGS+=-O3 #-DDEBUG=1
 SOURCES	:= $(wildcard *.c)
 OBJS	:= $(SOURCES:.c=.o) 
 
-.PHONY: subdirs all clean $(SUBDIRS)
+.PHONY: subdirs all clean install 
 
 all: $(OBJS) $(SUBDIRS)
 
 %.o : %.c
 	$(CC) $(INCLUDE_DIRS) -c $(CFLAGS) $< -o $@
+
+install:
+	pip install -r requirements.txt
+	cp melga.cfg /etc/
 
 subdirs: $(SUBDIRS)
 $(SUBDIRS): 

@@ -7,13 +7,15 @@ import os
 import time
 
 #CONFIGURATION
-broker = "localhost"
-port = 1883
+from pylibconfig2 import Config
 
+cfg = None
+with open ("/etc/melga.cfg", "r") as conffile:
+    cfg = Config(conffile.read())
 
 def getAstronomy():
 	baseurl = "https://query.yahooapis.com/v1/public/yql?"
-	yql_query = "select astronomy from weather.forecast where woeid = 56070886"
+	yql_query = "select astronomy from weather.forecast where woeid = "+str(cfg.yahoo.woeid)
 	yql_url = baseurl + urllib.urlencode({'q':yql_query}) + "&format=json"
 	result = urllib2.urlopen(yql_url).read()
 	data = json.loads(result)
@@ -38,7 +40,7 @@ userdata = dict()
 mqttc = paho.Client(client_uniq, False, userdata) #nocleanstart
 
 #connect to broker
-mqttc.connect(broker, port, 60)
+mqttc.connect(cfg.mqtt.server, cfg.mqtt.port, 60)
 mqttc.on_connect = on_connect
 
 #remain connected and publish

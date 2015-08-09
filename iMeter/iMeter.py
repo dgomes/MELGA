@@ -6,18 +6,18 @@ import paho.mqtt.client as mosquitto
 import urllib2
 import re
 from BeautifulSoup import BeautifulSoup
+from pylibconfig2 import Config
 
-#Customize here
-url = 'http://192.168.1.79/listdev.htm'
-broker = '192.168.1.10'
-port = 1883
+cfg = None
+with open ("/etc/melga.cfg", "r") as conffile:
+    cfg = Config(conffile.read())
 
 #DON'T EDIT BELOW!!!
 published = False
 
 def parseWebpage():
 
-	usock = urllib2.urlopen(url)
+	usock = urllib2.urlopen(cfg.imeter.url)
 	html = usock.read()
 	usock.close()
 
@@ -82,7 +82,7 @@ def main():
 	mqttc.on_log = on_log
 	mqttc.on_message = on_message
 	mqttc.on_connect = on_connect
-	mqttc.connect(broker, port, 60)
+	mqttc.connect(cfg.mqtt.server, cfg.mqtt.port, 60)
 
 	mqttc.loop_forever()
 
