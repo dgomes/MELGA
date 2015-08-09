@@ -32,5 +32,6 @@ struct __attribute__((packed)) igmp3 {
     struct group_record gr[0];
 };
 int IGMPv3_membership_report_message(char *multicast_group);
+void refresh_igmp(int s); 
 
 #endif

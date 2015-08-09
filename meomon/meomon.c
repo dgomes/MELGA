@@ -130,6 +130,8 @@ int main(int argc, char *argv[])
 
     if(IGMPv3_membership_report_message(HELLO_GROUP))
         exit(1);
+    signal(SIGALRM, refresh_igmp);
+    alarm(IGMP_INTERVAL);
 
 #ifdef TS
     int ts = (unsigned)time(NULL);

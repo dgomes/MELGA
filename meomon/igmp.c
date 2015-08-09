@@ -56,8 +56,6 @@ int IGMPv3_membership_report_message(char *mc_addr) {
         ret = 2;
         goto exit;
     }
-    signal(SIGALRM, refresh_igmp);
-    alarm(IGMP_INTERVAL);
 
 exit:
     free(p);
