@@ -11,9 +11,9 @@ CFLAGS+=-O3 #-DDEBUG=1
 SOURCES	:= $(wildcard *.c)
 OBJS	:= $(SOURCES:.c=.o) 
 
-.PHONY: subdirs all clean install 
+.PHONY: subdirs all clean install $(SUBDIRS) 
 
-all: $(OBJS) $(SUBDIRS)
+all: $(OBJS) $(SUBDIRS) 
 
 %.o : %.c
 	$(CC) $(INCLUDE_DIRS) -c $(CFLAGS) $< -o $@
