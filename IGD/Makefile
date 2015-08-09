@@ -15,7 +15,7 @@ include ../config.mk
 %.o : %.c
 	$(CC) $(CFLAGS) $(INCLUDE_DIRS) -c $< -o $@
 
-igd: igd.o ../config.o
+igd: igd.o 
 	$(CC) $(CFLAGS) $(LIBRARY_DIRS) -o $@ $(LDFLAGS) $^ $(LIBRARIES)
 
 clean:

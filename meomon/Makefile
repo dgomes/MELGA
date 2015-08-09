@@ -6,7 +6,7 @@ LIBRARIES=`xml2-config --libs`
 INCLUDE_DIRS=-I. -I..
 
 SOURCES := $(wildcard *.c)
-OBJS    := $(SOURCES:.c=.o) ../utils.o ../config.o
+OBJS    := $(SOURCES:.c=.o) 
 
 include ../mosquitto.mk
 include ../os.mk
