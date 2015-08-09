@@ -16,6 +16,7 @@
 
 #include <utils.h>
 #include "config.h"
+#include "serialconfig.h"
 
 #define ERR_NO_JSON 1
 #define ERR_NO_ID 2

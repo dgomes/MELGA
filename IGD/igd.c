@@ -68,7 +68,7 @@ int main(int argc, char ** argv)
     INFO("connected to MQTT broker - %s\n", mqtt.servername);
 #ifdef MINIUPNPC_API_VERSION
     if( rootdescurl || (devlist = upnpDiscover(2000, multicastif, minissdpdpath, 0/*sameport*/, 0, NULL))) {
-#elif
+#else
         if( rootdescurl || (devlist = upnpDiscover(2000, multicastif, minissdpdpath, 0/*sameport*/))) {
 #endif
             struct UPNPUrls urls;
