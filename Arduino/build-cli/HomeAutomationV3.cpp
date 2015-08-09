@@ -1,3 +1,4 @@
+#include <Arduino.h>
 #include <homeGW.h>
 #include <weather.h>
 #include <door.h>
