@@ -12,8 +12,9 @@
 #include <xi_helpers.h>
 #include <xi_err.h>
 #include <mosquitto.h>
-
+#include <syslog.h>
 #include <utils.h>
+#include "../utils.h"
 
 typedef struct {
 	xi_feed_t f;

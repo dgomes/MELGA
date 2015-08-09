@@ -134,6 +134,8 @@ void message_callback(struct mosquitto *mosq, void *userdata, const struct mosqu
 			xi_datapoint_t *p = &d->datapoints[0];
 			memset(p, 0, sizeof(xi_datapoint_t));
 
+			xi_set_value_str(p, message->payload);
+#if 0
 			/*test if it is an INT or FLOAT */
 			char *endptr;
 			intmax_t num = strtoimax(message->payload, &endptr, 10);
@@ -152,6 +154,7 @@ void message_callback(struct mosquitto *mosq, void *userdata, const struct mosqu
 				xi_set_value_i32(p, num);
 		//		DBG("%s -> %ld\n", d->datastream_id, (long int) num);
 			}
+#endif
 		}
 	}
 	/*Have we received updates on all datastreams? */

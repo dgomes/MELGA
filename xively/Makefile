@@ -5,7 +5,7 @@ INCLUDE_DIRS=-I.. -I libxively/src/libxively
 CFLAGS=-g -std=gnu99 -Wall `pkg-config --cflags libconfig` -D_GNU_SOURCE -DDEBUG=1
 
 SOURCES := $(wildcard *.c) $(wildcard ../*.c)
-OBJS	:= $(SOURCES:.c=.o)
+OBJS	:= $(SOURCES:.c=.o) 
 
 %.o : %.c
 	$(CC) $(CFLAGS) $(INCLUDE_DIRS) -c $< -o $@
