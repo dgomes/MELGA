@@ -2,7 +2,7 @@
 import logging
 import datetime 
 import sys
-import mosquitto
+import paho.mqtt.client as mosquitto 
 import urllib2
 import re
 from BeautifulSoup import BeautifulSoup
@@ -62,7 +62,7 @@ def publish(mqttc, topic, data):
 		r, mid = mqttc.publish(topic + "/" + key, data[key], retain=True)
 		logging.debug(topic+"/"+ str(key) + " -> " + str(data[key]))
 		raw = raw + ", \"" + str(key) + "\": " + str(data[key])
-		if r != mosquitto.MOSQ_ERR_SUCCESS:
+		if r != mosquitto.MQTT_ERR_SUCCESS:
 			logging.error("ERROR on publish")
 	raw = raw + "}"
 	mqttc.publish(topic + "/raw", raw, retain=False)
