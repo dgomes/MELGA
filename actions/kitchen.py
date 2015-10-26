@@ -13,42 +13,44 @@ import socket
 broker = "localhost"
 port = 1883
 
-def action(luminosity, power):
-	print "luminosity = " + str(luminosity), ",", "power = " + str(power)
-	if luminosity < 750:
-		if power > 240:
-			print "Turn ON - Kitchen"
-			return "R00074EE7"
-		else:
-			print "Turn OFF - Kitchen"
-			return "R00074EE6"
-	else:
-		print "Turn OFF - Kitchen"
-		return "R00074EE6"
-
-def on_connect(mqttc, userdata, rc):
-	mqttc.subscribe([("imeter/power", 0), ("greenhouse/Luminosity", 0), ("weather/night", 0)])
- 
-def on_message(mqttc, userdata, message):
-#	print message.topic + " -> " + str(message.payload)	
-	userdata[message.topic] = message.payload
-
+def lights(turn=False):
+	on = "R00074EE7"
+	off = "R00074EE6"
 	cmd = ""
 	
-#	if "greenhouse/Luminosity" in userdata and "imeter/power" in userdata:
-#		cmd = action(int(userdata["greenhouse/Luminosity"]), int(userdata["imeter/power"]))
-	
-	if "weather/night" in userdata and "imeter/power" in userdata:
-		if "True" in userdata["weather/night"]:
-			cmd = action(0, int(userdata["imeter/power"]))
-		else:
-			cmd = action(1000, int(userdata["imeter/power"]))
-	
+	if turn:
+		print "Turn on - Kitchen"
+		cmd = on
+	else:
+		print "Turn OFF - Kitchen"
+		cmd = off
+
 	if len(cmd):
 		hostname = socket.gethostname()
 		mqttc.publish(hostname+"./ttyUSB0/cmd", cmd)
 		mqttc.publish(hostname+"./ttyUSB1/cmd", cmd)
 		mqttc.disconnect()
+
+def on_connect(mqttc, userdata, rc):
+	mqttc.subscribe([("imeter/power", 0), ("weather/night", 0), ("kitchen/light", 0)])
+ 
+def on_message(mqttc, userdata, message):
+	print message.topic + " -> " + str(message.payload)	
+	userdata[message.topic] = message.payload
+
+	if "weather/night" in userdata and "imeter/power" in userdata and "kitchen/light" in userdata:
+		if "True" in userdata["weather/night"]:
+			if int(userdata["imeter/power"]) > 300: #240:
+				print int(userdata["imeter/power"])
+				lights(True)		
+			elif int(userdata["kitchen/light"]) == 1:
+				mqttc.publish("kitchen/light", "0", retain=True)
+				mqttc.disconnect()
+			else:
+				lights(False)				
+		else:
+			lights(False)
+	
  
 mypid = os.getpid()
 client_uniq = "kitchen_"+str(mypid)

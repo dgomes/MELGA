@@ -31,6 +31,7 @@ def on_message(mqttc, userdata, message):
 		hostname = socket.gethostname()
 		mqttc.publish(hostname+"./ttyUSB0/cmd", cmd)
 		mqttc.publish(hostname+"./ttyUSB1/cmd", cmd)
+		mqttc.publish("kitchen/light", 1, retain=True)
 		mqttc.disconnect()
  
 mypid = os.getpid()
