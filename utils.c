@@ -13,6 +13,16 @@ char* strlaststr(const char* haystack, const char* needle) {
    return loc;
 }
 
+unsigned backoff(unsigned backoff_time) {
+	INFO("waiting %u seconds...", backoff_time);
+	sleep(backoff_time);
+	backoff_time+=backoff_time;
+	if(backoff_time > MAX_BACKOFF ) {
+		return 0;
+	}
+	return backoff_time;
+}
+
 #ifdef DAEMON
 void daemonize() {
 	#ifndef DEBUG

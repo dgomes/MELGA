@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <unistd.h>
 
 #define ANSI_COLOR_RED     "\x1b[31m"
 #define ANSI_COLOR_GREEN   "\x1b[32m"
@@ -19,13 +20,13 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <unistd.h>
 #endif
 
 #ifdef SYSLOG
 #include <syslog.h>
 #endif
 
+#define MAX_BACKOFF 600
 
 #ifdef DEBUG
 #define DBG(...) \
@@ -51,6 +52,7 @@
 #endif
 
 char* strlaststr(const char *haystack, const char* needle);
+unsigned backoff(unsigned backoff_time); 
 void daemonize();
 
 #endif
