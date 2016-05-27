@@ -7,7 +7,7 @@ CFLAGS += -DDEBUG
 INCLUDE_DIRS ?= -I/usr/include/miniupnpc -I/usr/local/include/miniupnpc -I. -I..
 LIBRARY_DIRS ?= -L/usr/lib/
 
-LDFLAGS = -lminiupnpc
+LIBRARIES += -lminiupnpc
 
 include ../mosquitto.mk
 include ../config.mk
