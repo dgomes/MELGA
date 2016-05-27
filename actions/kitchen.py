@@ -8,6 +8,7 @@ import paho.mqtt.client as paho
 import os
 import time
 import socket
+import datetime
 
 #CONFIGURATION
 broker = "localhost"
@@ -39,9 +40,8 @@ def on_message(mqttc, userdata, message):
 	userdata[message.topic] = message.payload
 
 	if "weather/night" in userdata and "imeter/power" in userdata and "kitchen/light" in userdata:
-		if "True" in userdata["weather/night"]:
-			if int(userdata["imeter/power"]) > 300: #240:
-				print int(userdata["imeter/power"])
+		if "True" in userdata["weather/night"] or int(datetime.datetime.now().hour) > 19:
+			if int(userdata["imeter/power"]) > 240:
 				lights(True)		
 			elif int(userdata["kitchen/light"]) == 1:
 				mqttc.publish("kitchen/light", "0", retain=True)
