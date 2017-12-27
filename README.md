@@ -1,3 +1,7 @@
+!!!THIS PROJECT IS DEPRECATED!!!
+================================
+I now use and support Home Assistant (https://home-assistant.io) 
+
 MELGA - MQTT-SN basEd LightweiGht home Automation
 =================================================
 
